@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+
+{% block title %}Payment Instructions - AI Course Platform{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <h1 class="fw-bold mb-3">Payment Instructions</h1>
+            <p class="lead text-muted">Learn how to make secure payments for your courses</p>
+        </div>
+    </div>
+
+    <!-- Payment Methods -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0"><i class="fas fa-credit-card me-2"></i>Available Payment Methods</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for method in payment_methods %}
+                        <div class="col-md-4 mb-4">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body text-center">
+                                    <div class="mb-3">
+                                        {% if method.name == 'easypaisa' %}
+                                            <i class="fas fa-mobile-alt text-primary" style="font-size: 3rem;"></i>
+                                        {% elif method.name == 'jazzcash' %}
+                                            <i class="fas fa-wallet text-success" style="font-size: 3rem;"></i>
+                                        {% elif method.name == 'bank_transfer' %}
+                                            <i class="fas fa-university text-info" style="font-size: 3rem;"></i>
+                                        {% else %}
+                                            <i class="fas fa-credit-card text-secondary" style="font-size: 3rem;"></i>
+                                        {% endif %}
+                                    </div>
+                                    <h5 class="card-title">{{ method.get_name_display }}</h5>
+                                    {% if method.account_number %}
+                                        <p class="card-text">
+                                            <strong>Account:</strong> {{ method.account_number }}
+                                        </p>
+                                    {% endif %}
+                                    {% if method.account_title %}
+                                        <p class="card-text">
+                                            <strong>Title:</strong> {{ method.account_title }}
+                                        </p>
+                                    {% endif %}
+                                    <span class="badge {% if method.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {% if method.is_active %}Active{% else %}Inactive{% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="col-12 text-center">
+                            <i class="fas fa-exclamation-triangle text-warning mb-3" style="font-size: 3rem;"></i>
+                            <h5 class="text-muted">No payment methods available</h5>
+                            <p class="text-muted">Please contact support for payment options.</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Process -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0"><i class="fas fa-list-ol me-2"></i>Payment Process</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-4">
+                            <div class="text-center">
+                                <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                                    <h4 class="mb-0">1</h4>
+                                </div>
+                                <h5>Select Course</h5>
+                                <p class="text-muted">Choose the course you want to enroll in</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="text-center">
+                                <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                                    <h4 class="mb-0">2</h4>
+                                </div>
+                                <h5>Choose Payment Method</h5>
+                                <p class="text-muted">Select your preferred payment method</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="text-center">
+                                <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                                    <h4 class="mb-0">3</h4>
+                                </div>
+                                <h5>Make Payment</h5>
+                                <p class="text-muted">Complete the payment transaction</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="text-center">
+                                <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                                    <h4 class="mb-0">4</h4>
+                                </div>
+                                <h5>Get Access</h5>
+                                <p class="text-muted">Receive course access after approval</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Instructions -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0"><i class="fas fa-info-circle me-2"></i>Detailed Instructions</h4>
+                </div>
+                <div class="card-body">
+                    {% if payment_settings %}
+                        {% if payment_settings.easypaisa_instructions %}
+                        <div class="mb-4">
+                            <h5><i class="fas fa-mobile-alt text-primary me-2"></i>EasyPaisa Instructions</h5>
+                            <div class="bg-light p-3 rounded">
+                                {{ payment_settings.easypaisa_instructions|linebreaks }}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if payment_settings.jazzcash_instructions %}
+                        <div class="mb-4">
+                            <h5><i class="fas fa-wallet text-success me-2"></i>JazzCash Instructions</h5>
+                            <div class="bg-light p-3 rounded">
+                                {{ payment_settings.jazzcash_instructions|linebreaks }}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if payment_settings.bank_transfer_instructions %}
+                        <div class="mb-4">
+                            <h5><i class="fas fa-university text-info me-2"></i>Bank Transfer Instructions</h5>
+                            <div class="bg-light p-3 rounded">
+                                {{ payment_settings.bank_transfer_instructions|linebreaks }}
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-info-circle text-muted mb-3" style="font-size: 3rem;"></i>
+                            <h5 class="text-muted">No detailed instructions available</h5>
+                            <p class="text-muted">Please contact support for payment instructions.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Information -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-headset me-2"></i>Need Help?</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">If you have any questions about payments, contact our support team:</p>
+                    
+                    <div class="mb-3">
+                        <i class="fas fa-envelope text-primary me-2"></i>
+                        <strong>Email:</strong><br>
+                        <a href="mailto:{{ payment_settings.platform_email|default:'support@aicourseplatform.com' }}" class="text-decoration-none">
+                            {{ payment_settings.platform_email|default:'support@aicourseplatform.com' }}
+                        </a>
+                    </div>
+
+                    <div class="mb-3">
+                        <i class="fas fa-phone text-primary me-2"></i>
+                        <strong>Phone:</strong><br>
+                        <a href="tel:{{ payment_settings.platform_phone|default:'+92 300 1234567' }}" class="text-decoration-none">
+                            {{ payment_settings.platform_phone|default:'+92 300 1234567' }}
+                        </a>
+                    </div>
+
+                    <div class="mb-3">
+                        <i class="fas fa-clock text-primary me-2"></i>
+                        <strong>Support Hours:</strong><br>
+                        <span class="text-muted">24/7 Available</span>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>Tip:</strong> Always keep your payment receipt for reference.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Notice -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-shield-alt me-2"></i>Security Notice</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            All payments are secure and encrypted
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            We never store your payment details
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            30-day money-back guarantee
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            SSL encrypted connections
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

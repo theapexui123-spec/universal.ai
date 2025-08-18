@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Enroll in {{ course.title }} - AI Course Platform{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Course Summary -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>Course Enrollment</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            {% if course.thumbnail %}
+                                <img src="{{ course.thumbnail.url }}" class="img-fluid rounded" alt="{{ course.title }}">
+                            {% else %}
+                                <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height: 150px;">
+                                    <i class="fas fa-image text-muted" style="font-size: 3rem;"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-9">
+                            <h5 class="mb-2">{{ course.title }}</h5>
+                            <p class="text-muted mb-2">{{ course.short_description }}</p>
+                            <div class="d-flex align-items-center mb-2">
+                                <span class="badge bg-primary me-2">{{ course.get_difficulty_display }}</span>
+                                <span class="text-muted"><i class="fas fa-clock me-1"></i>{{ course.duration }}</span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <span class="text-muted me-3">
+                                    <i class="fas fa-user me-1"></i>{{ course.instructor.get_full_name|default:course.instructor.username }}
+                                </span>
+                                <span class="text-muted">
+                                    <i class="fas fa-users me-1"></i>{{ course.students_enrolled }} students
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Form -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-credit-card me-2"></i>Payment Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <form method="post" enctype="multipart/form-data">
+                                {% csrf_token %}
+                                
+                                <!-- Payment Method Selection -->
+                                <div class="mb-4">
+                                    <h6 class="mb-3">Select Payment Method</h6>
+                                    {% for method in payment_methods %}
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="radio" name="payment_method" 
+                                                   id="method_{{ method.id }}" value="{{ method.id }}" required>
+                                            <label class="form-check-label" for="method_{{ method.id }}">
+                                                <strong>{{ method.get_name_display }}</strong>
+                                                {% if method.account_number %}
+                                                    <br><small class="text-muted">Account: {{ method.account_number }}</small>
+                                                {% endif %}
+                                                {% if method.account_title %}
+                                                    <br><small class="text-muted">Title: {{ method.account_title }}</small>
+                                                {% endif %}
+                                            </label>
+                                        </div>
+                                    {% empty %}
+                                        <div class="alert alert-warning">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                            No payment methods are currently available. Please contact support.
+                                        </div>
+                                    {% endfor %}
+                                </div>
+
+                                <!-- Payment Details -->
+                                <div class="mb-4">
+                                    <h6 class="mb-3">Payment Details</h6>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="reference_number" class="form-label">Reference Number *</label>
+                                            <input type="text" class="form-control" id="reference_number" 
+                                                   name="reference_number" required 
+                                                   placeholder="Enter your transaction reference">
+                                            <div class="form-text">Please provide the reference number from your payment transaction.</div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="transaction_id" class="form-label">Transaction ID</label>
+                                            <input type="text" class="form-control" id="transaction_id" 
+                                                   name="transaction_id" 
+                                                   placeholder="Optional transaction ID">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Payment Screenshot -->
+                                <div class="mb-4">
+                                    <h6 class="mb-3">Payment Screenshot</h6>
+                                    <div class="mb-3">
+                                        <label for="payment_screenshot" class="form-label">Upload Payment Screenshot *</label>
+                                        <input type="file" class="form-control" id="payment_screenshot" 
+                                               name="payment_screenshot" accept="image/*" required>
+                                        <div class="form-text">
+                                            Please upload a clear screenshot of your payment confirmation.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Student Notes -->
+                                <div class="mb-4">
+                                    <h6 class="mb-3">Additional Notes</h6>
+                                    <textarea class="form-control" name="student_notes" rows="3" 
+                                              placeholder="Any additional information about your payment..."></textarea>
+                                </div>
+
+                                <!-- Terms and Conditions -->
+                                <div class="mb-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="terms" required>
+                                        <label class="form-check-label" for="terms">
+                                            I agree to the <a href="#" class="text-decoration-none">Terms and Conditions</a> 
+                                            and <a href="#" class="text-decoration-none">Privacy Policy</a>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary btn-lg" 
+                                            {% if not payment_methods %}disabled{% endif %}>
+                                        <i class="fas fa-lock me-2"></i>Submit Payment
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Payment Summary -->
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-header">
+                                    <h6 class="mb-0"><i class="fas fa-receipt me-2"></i>Payment Summary</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Course Price:</span>
+                                        <span>${{ course.price }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Processing Fee:</span>
+                                        <span>$0.00</span>
+                                    </div>
+                                    <hr>
+                                    <div class="d-flex justify-content-between mb-3">
+                                        <strong>Total Amount:</strong>
+                                        <strong class="text-success">${{ course.price }}</strong>
+                                    </div>
+                                    
+                                    <div class="alert alert-info small">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        <strong>Payment Process:</strong>
+                                        <ol class="mb-0 mt-2">
+                                            <li>Select payment method</li>
+                                            <li>Make payment to the provided account</li>
+                                            <li>Upload payment screenshot</li>
+                                            <li>Wait for admin approval (24-48 hours)</li>
+                                        </ol>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Payment Instructions -->
+                            <div class="card mt-3">
+                                <div class="card-header">
+                                    <h6 class="mb-0"><i class="fas fa-question-circle me-2"></i>Need Help?</h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="small text-muted mb-2">
+                                        If you have any questions about the payment process, please contact us:
+                                    </p>
+                                    <div class="small">
+                                        <div class="mb-1">
+                                            <i class="fas fa-envelope me-1"></i>support@aicourseplatform.com
+                                        </div>
+                                        <div class="mb-1">
+                                            <i class="fas fa-phone me-1"></i>+92 300 1234567
+                                        </div>
+                                        <div>
+                                            <i class="fas fa-clock me-1"></i>24/7 Support
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

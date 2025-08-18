@@ -1,0 +1,280 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - AI Course Platform{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h4 class="mb-2">Welcome back, {{ user.get_full_name|default:user.username }}!</h4>
+                            <p class="mb-0">Continue your learning journey and track your progress.</p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <i class="fas fa-user-circle" style="font-size: 4rem; opacity: 0.7;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="mb-2">
+                        <i class="fas fa-graduation-cap text-primary" style="font-size: 2rem;"></i>
+                    </div>
+                    <h4 class="text-primary">{{ enrolled_courses.count }}</h4>
+                    <p class="text-muted mb-0">Enrolled Courses</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="mb-2">
+                        <i class="fas fa-check-circle text-success" style="font-size: 2rem;"></i>
+                    </div>
+                    <h4 class="text-success">{{ completed_lessons_count }}</h4>
+                    <p class="text-muted mb-0">Completed Lessons</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="mb-2">
+                        <i class="fas fa-clock text-warning" style="font-size: 2rem;"></i>
+                    </div>
+                    <h4 class="text-warning">{{ total_study_time }}</h4>
+                    <p class="text-muted mb-0">Study Hours</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="mb-2">
+                        <i class="fas fa-star text-info" style="font-size: 2rem;"></i>
+                    </div>
+                    <h4 class="text-info">{{ reviews_count }}</h4>
+                    <p class="text-muted mb-0">Reviews Given</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Enrolled Courses -->
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-book me-2"></i>My Enrolled Courses</h5>
+                    <a href="{% url 'courses:my_courses' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if enrolled_courses %}
+                        <div class="row">
+                            {% for enrollment in enrolled_courses %}
+                            <div class="col-md-6 mb-3">
+                                <div class="card h-100">
+                                    {% if enrollment.course.thumbnail %}
+                                        <img src="{{ enrollment.course.thumbnail.url }}" class="card-img-top" style="height: 150px; object-fit: cover;" alt="{{ enrollment.course.title }}">
+                                    {% else %}
+                                        <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 150px;">
+                                            <i class="fas fa-image text-muted" style="font-size: 3rem;"></i>
+                                        </div>
+                                    {% endif %}
+                                    <div class="card-body">
+                                        <h6 class="card-title">{{ enrollment.course.title }}</h6>
+                                        <p class="card-text text-muted small">{{ enrollment.course.short_description|truncatewords:10 }}</p>
+                                        
+                                        <!-- Progress Bar -->
+                                        {% with progress=enrollment.course.lessons.count %}
+                                        {% with completed=enrollment.course.lessons.all|length %}
+                                        <div class="mb-2">
+                                            <div class="d-flex justify-content-between small text-muted mb-1">
+                                                <span>Progress</span>
+                                                <span>{{ completed }}/{{ progress }}</span>
+                                            </div>
+                                            <div class="progress" style="height: 6px;">
+                                                <div class="progress-bar" role="progressbar" 
+                                                     style="width: {% widthratio completed progress 100 %}%"></div>
+                                            </div>
+                                        </div>
+                                        {% endwith %}
+                                        {% endwith %}
+                                        
+                                        <div class="d-grid">
+                                            <a href="{% url 'courses:course_learn' enrollment.course.slug %}" class="btn btn-primary btn-sm">
+                                                <i class="fas fa-play me-1"></i>Continue Learning
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-book-open text-muted mb-3" style="font-size: 3rem;"></i>
+                            <h6 class="text-muted">No courses enrolled yet</h6>
+                            <p class="text-muted">Start your learning journey by enrolling in a course!</p>
+                            <a href="{% url 'courses:course_list' %}" class="btn btn-primary">
+                                <i class="fas fa-search me-1"></i>Browse Courses
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Activity</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_activity %}
+                        <div class="timeline">
+                            {% for activity in recent_activity %}
+                            <div class="timeline-item mb-3">
+                                <div class="d-flex">
+                                    <div class="timeline-icon me-3">
+                                        {% if activity.type == 'enrollment' %}
+                                            <i class="fas fa-graduation-cap text-primary"></i>
+                                        {% elif activity.type == 'lesson' %}
+                                            <i class="fas fa-check-circle text-success"></i>
+                                        {% elif activity.type == 'payment' %}
+                                            <i class="fas fa-credit-card text-info"></i>
+                                        {% else %}
+                                            <i class="fas fa-circle text-muted"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div class="timeline-content">
+                                        <p class="mb-1 small">{{ activity.description }}</p>
+                                        <small class="text-muted">{{ activity.timestamp|timesince }} ago</small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-clock text-muted mb-2" style="font-size: 2rem;"></i>
+                            <p class="text-muted small mb-0">No recent activity</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'courses:course_list' %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-search me-1"></i>Browse Courses
+                        </a>
+                        <a href="{% url 'payment_system:my_payments' %}" class="btn btn-outline-info btn-sm">
+                            <i class="fas fa-credit-card me-1"></i>My Payments
+                        </a>
+                        <a href="{% url 'accounts:profile' %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-user me-1"></i>Edit Profile
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Payments -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-credit-card me-2"></i>Recent Payments</h5>
+                    <a href="{% url 'payment_system:my_payments' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_payments %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Course</th>
+                                        <th>Amount</th>
+                                        <th>Method</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for payment in recent_payments %}
+                                    <tr>
+                                        <td>
+                                            <a href="{% url 'courses:course_detail' payment.course.slug %}" class="text-decoration-none">
+                                                {{ payment.course.title }}
+                                            </a>
+                                        </td>
+                                        <td>${{ payment.amount }}</td>
+                                        <td>{{ payment.payment_method.get_name_display }}</td>
+                                        <td>
+                                            {% if payment.status == 'pending' %}
+                                                <span class="badge bg-warning">Pending</span>
+                                            {% elif payment.status == 'approved' %}
+                                                <span class="badge bg-success">Approved</span>
+                                            {% elif payment.status == 'rejected' %}
+                                                <span class="badge bg-danger">Rejected</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ payment.get_status_display }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ payment.created_at|date:"M d, Y" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-credit-card text-muted mb-3" style="font-size: 3rem;"></i>
+                            <h6 class="text-muted">No payments yet</h6>
+                            <p class="text-muted">Your payment history will appear here.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.timeline-icon {
+    width: 20px;
+    text-align: center;
+}
+
+.timeline-content {
+    flex: 1;
+}
+
+.progress {
+    background-color: #e9ecef;
+}
+
+.progress-bar {
+    background-color: #0d6efd;
+}
+</style>
+{% endblock %}

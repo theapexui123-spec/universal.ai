@@ -1,0 +1,41 @@
+# Core Django
+Django==4.2.7
+
+# Image processing
+Pillow==10.1.0
+
+# Form styling
+django-crispy-forms==2.1
+crispy-bootstrap5==0.7
+
+# Production server
+gunicorn==21.2.0
+
+# Database
+psycopg2-binary==2.9.7
+
+# Environment variables
+python-decouple==3.8
+
+# Caching
+redis==4.6.0
+
+# Security
+django-cors-headers==4.3.1
+
+# Development tools (optional)
+django-debug-toolbar==4.2.0
+
+# Testing
+coverage==7.3.2
+pytest==7.4.2
+pytest-django==4.5.2
+
+# Code quality
+flake8==6.1.0
+black==23.9.1
+isort==5.12.0
+
+# Security scanning
+bandit==1.7.5
+safety==2.3.5

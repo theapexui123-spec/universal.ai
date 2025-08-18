@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Login - AI Course Platform{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white text-center">
+                    <h4 class="mb-0"><i class="fas fa-sign-in-alt me-2"></i>Welcome Back</h4>
+                </div>
+                <div class="card-body p-4">
+                    <div class="text-center mb-4">
+                        <p class="text-muted">Sign in to continue your learning journey</p>
+                    </div>
+
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            {{ form.username|as_crispy_field }}
+                        </div>
+
+                        <div class="mb-4">
+                            {{ form.password|as_crispy_field }}
+                        </div>
+
+                        {% if form.errors %}
+                            <div class="alert alert-danger">
+                                <h6><i class="fas fa-exclamation-triangle me-2"></i>Login failed</h6>
+                                <p class="mb-0">Please check your username and password and try again.</p>
+                            </div>
+                        {% endif %}
+
+                        <div class="d-grid mb-3">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                            </button>
+                        </div>
+
+                        <div class="text-center">
+                            <p class="text-muted mb-0">
+                                Don't have an account? 
+                                <a href="{% url 'accounts:register' %}" class="text-decoration-none">Register here</a>
+                            </p>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Features Section -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted mb-3">Why Sign In?</h6>
+                            <div class="row">
+                                <div class="col-4">
+                                    <div class="mb-2">
+                                        <i class="fas fa-graduation-cap text-primary" style="font-size: 1.5rem;"></i>
+                                    </div>
+                                    <small class="text-muted">Access Courses</small>
+                                </div>
+                                <div class="col-4">
+                                    <div class="mb-2">
+                                        <i class="fas fa-chart-line text-primary" style="font-size: 1.5rem;"></i>
+                                    </div>
+                                    <small class="text-muted">Track Progress</small>
+                                </div>
+                                <div class="col-4">
+                                    <div class="mb-2">
+                                        <i class="fas fa-certificate text-primary" style="font-size: 1.5rem;"></i>
+                                    </div>
+                                    <small class="text-muted">Get Certificates</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
