@@ -90,20 +90,41 @@ class PaymentSettings(models.Model):
     """Global payment settings"""
     platform_name = models.CharField(max_length=100, default="AI Course Platform")
     platform_email = models.EmailField(default="admin@aicourseplatform.com")
-    platform_phone = models.CharField(max_length=20, blank=True)
+    platform_phone = models.CharField(max_length=20, default="+92 300 1234567")
+    platform_address = models.TextField(blank=True, help_text="Platform address for bank transfers")
     
     # Payment instructions
-    easypaisa_instructions = models.TextField(blank=True)
-    jazzcash_instructions = models.TextField(blank=True)
-    bank_transfer_instructions = models.TextField(blank=True)
+    easypaisa_instructions = models.TextField(blank=True, help_text="Step-by-step instructions for EasyPaisa payments")
+    jazzcash_instructions = models.TextField(blank=True, help_text="Step-by-step instructions for JazzCash payments")
+    bank_transfer_instructions = models.TextField(blank=True, help_text="Step-by-step instructions for bank transfers")
+    
+    # Payment account details (can be overridden by PaymentMethod)
+    easypaisa_number = models.CharField(max_length=20, blank=True, help_text="EasyPaisa account number")
+    easypaisa_title = models.CharField(max_length=100, blank=True, help_text="EasyPaisa account title")
+    jazzcash_number = models.CharField(max_length=20, blank=True, help_text="JazzCash account number")
+    jazzcash_title = models.CharField(max_length=100, blank=True, help_text="JazzCash account title")
+    bank_account_number = models.CharField(max_length=50, blank=True, help_text="Bank account number")
+    bank_account_title = models.CharField(max_length=100, blank=True, help_text="Bank account title")
+    bank_name = models.CharField(max_length=100, blank=True, help_text="Bank name")
+    bank_branch = models.CharField(max_length=100, blank=True, help_text="Bank branch")
+    bank_iban = models.CharField(max_length=50, blank=True, help_text="Bank IBAN (if applicable)")
     
     # Auto-approval settings
-    auto_approve_payments = models.BooleanField(default=False)
-    auto_approve_amount_limit = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    auto_approve_payments = models.BooleanField(default=False, help_text="Automatically approve payments below the limit")
+    auto_approve_amount_limit = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Maximum amount for auto-approval")
     
     # Notification settings
-    notify_admin_on_payment = models.BooleanField(default=True)
-    notify_student_on_approval = models.BooleanField(default=True)
+    notify_admin_on_payment = models.BooleanField(default=True, help_text="Send email notification to admin on new payment")
+    notify_student_on_approval = models.BooleanField(default=True, help_text="Send email notification to student on payment approval")
+    
+    # Additional settings
+    payment_processing_time = models.CharField(max_length=50, default="24-48 hours", help_text="Expected payment processing time")
+    refund_policy = models.TextField(blank=True, help_text="Refund policy information")
+    terms_conditions = models.TextField(blank=True, help_text="Payment terms and conditions")
+    
+    # Support information
+    support_hours = models.CharField(max_length=100, default="24/7 Available", help_text="Support hours")
+    whatsapp_number = models.CharField(max_length=20, blank=True, help_text="WhatsApp support number")
     
     class Meta:
         verbose_name_plural = "Payment Settings"

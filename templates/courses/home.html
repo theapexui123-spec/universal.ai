@@ -14,9 +14,21 @@
                     <a href="{% url 'courses:course_list' %}" class="btn btn-light btn-lg">
                         <i class="fas fa-play me-2"></i>Explore Courses
                     </a>
-                    <a href="{% url 'accounts:register' %}" class="btn btn-outline-light btn-lg">
-                        <i class="fas fa-user-plus me-2"></i>Get Started
-                    </a>
+                    {% if user.is_authenticated %}
+                        {% if user.enrollments.filter.is_active.exists %}
+                            <a href="{% url 'courses:my_courses' %}" class="btn btn-outline-light btn-lg">
+                                <i class="fas fa-graduation-cap me-2"></i>Continue Learning
+                            </a>
+                        {% else %}
+                            <a href="{% url 'accounts:dashboard' %}" class="btn btn-outline-light btn-lg">
+                                <i class="fas fa-tachometer-alt me-2"></i>My Dashboard
+                            </a>
+                        {% endif %}
+                    {% else %}
+                        <a href="{% url 'accounts:register' %}" class="btn btn-outline-light btn-lg">
+                            <i class="fas fa-user-plus me-2"></i>Get Started
+                        </a>
+                    {% endif %}
                 </div>
             </div>
             <div class="col-lg-6 text-center">

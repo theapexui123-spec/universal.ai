@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Payment Status - {{ payment.course.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Payment Status
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Status Banner -->
+                    <div class="alert {% if payment.status == 'pending' %}alert-warning{% elif payment.status == 'approved' %}alert-success{% elif payment.status == 'rejected' %}alert-danger{% else %}alert-secondary{% endif %} mb-4">
+                        <h5 class="alert-heading">
+                            {% if payment.status == 'pending' %}
+                                <i class="fas fa-clock me-2"></i>Payment Under Review
+                            {% elif payment.status == 'approved' %}
+                                <i class="fas fa-check-circle me-2"></i>Payment Approved!
+                            {% elif payment.status == 'rejected' %}
+                                <i class="fas fa-times-circle me-2"></i>Payment Rejected
+                            {% else %}
+                                <i class="fas fa-question-circle me-2"></i>Payment Status Unknown
+                            {% endif %}
+                        </h5>
+                        <p class="mb-0">
+                            {% if payment.status == 'pending' %}
+                                Your payment is currently being reviewed by our admin team. You will be notified once the review is complete.
+                            {% elif payment.status == 'approved' %}
+                                Congratulations! Your payment has been approved and you are now enrolled in the course.
+                            {% elif payment.status == 'rejected' %}
+                                Your payment has been rejected. Please check the admin notes below for more information.
+                            {% else %}
+                                Your payment status is currently unknown. Please contact support.
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <!-- Payment Information -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5 class="text-primary">Course Information</h5>
+                            <p><strong>Course:</strong> {{ payment.course.title }}</p>
+                            <p><strong>Amount:</strong> ${{ payment.amount }}</p>
+                            <p><strong>Payment Method:</strong> {{ payment.payment_method.get_name_display }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="text-primary">Payment Details</h5>
+                            {% if payment.transaction_id %}
+                                <p><strong>Transaction ID:</strong> {{ payment.transaction_id }}</p>
+                            {% endif %}
+                            {% if payment.reference_number %}
+                                <p><strong>Reference Number:</strong> {{ payment.reference_number }}</p>
+                            {% endif %}
+                            <p><strong>Submitted:</strong> {{ payment.created_at|date:"M d, Y H:i" }}</p>
+                            {% if payment.verified_at %}
+                                <p><strong>Verified:</strong> {{ payment.verified_at|date:"M d, Y H:i" }}</p>
+                                {% if payment.verified_by %}
+                                    <p><strong>Verified by:</strong> {{ payment.verified_by.get_full_name|default:payment.verified_by.username }}</p>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Screenshot Display -->
+                    {% if payment.payment_screenshot %}
+                        <div class="border rounded p-4 mb-4">
+                            <h5 class="text-primary mb-3">
+                                <i class="fas fa-image me-2"></i>Payment Screenshot
+                            </h5>
+                            <img src="{{ payment.payment_screenshot.url }}" alt="Payment Screenshot" class="img-fluid border rounded" style="max-width: 400px;">
+                        </div>
+                    {% endif %}
+
+                    <!-- Student Notes -->
+                    {% if payment.student_notes %}
+                        <div class="border rounded p-4 mb-4">
+                            <h5 class="text-primary">Your Notes</h5>
+                            <p class="mb-0">{{ payment.student_notes }}</p>
+                        </div>
+                    {% endif %}
+
+                    <!-- Admin Notes -->
+                    {% if payment.admin_notes %}
+                        <div class="border rounded p-4 mb-4 bg-light">
+                            <h5 class="text-primary">Admin Notes</h5>
+                            <p class="mb-0">{{ payment.admin_notes }}</p>
+                        </div>
+                    {% endif %}
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'courses:course_detail' payment.course.slug %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Course
+                        </a>
+                        
+                        {% if payment.status == 'approved' %}
+                            <a href="{% url 'courses:course_learn' payment.course.slug %}" class="btn btn-success">
+                                <i class="fas fa-play me-2"></i>Start Learning
+                            </a>
+                        {% elif payment.status == 'rejected' %}
+                            <a href="{% url 'payment_system:payment_page' payment.course.slug %}" class="btn btn-primary">
+                                <i class="fas fa-redo me-2"></i>Try Again
+                            </a>
+                        {% else %}
+                            <a href="{% url 'payment_system:payment_detail' payment.id %}" class="btn btn-primary">
+                                <i class="fas fa-edit me-2"></i>Update Payment
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -32,6 +32,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -133,6 +134,14 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# File upload settings
+MAX_UPLOAD_SIZE = 524288000  # 500MB in bytes
+FILE_UPLOAD_MAX_MEMORY_SIZE = 52428800  # 50MB in bytes
+
+# Video file settings
+ALLOWED_VIDEO_EXTENSIONS = ['mp4', 'webm', 'avi', 'mov', 'mkv']
+MAX_VIDEO_SIZE = 524288000  # 500MB in bytes
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Payment Details - {{ payment.course.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-credit-card me-2"></i>Payment Details
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Messages -->
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <!-- Payment Information -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5 class="text-primary">Course Information</h5>
+                            <p><strong>Course:</strong> {{ payment.course.title }}</p>
+                            <p><strong>Amount:</strong> ${{ payment.amount }}</p>
+                            <p><strong>Payment Method:</strong> {{ payment.payment_method.get_name_display }}</p>
+                            <p><strong>Status:</strong> 
+                                <span class="badge {% if payment.status == 'pending' %}bg-warning{% elif payment.status == 'approved' %}bg-success{% elif payment.status == 'rejected' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                    {{ payment.get_status_display }}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="text-primary">Payment Details</h5>
+                            {% if payment.transaction_id %}
+                                <p><strong>Transaction ID:</strong> {{ payment.transaction_id }}</p>
+                            {% endif %}
+                            {% if payment.reference_number %}
+                                <p><strong>Reference Number:</strong> {{ payment.reference_number }}</p>
+                            {% endif %}
+                            <p><strong>Submitted:</strong> {{ payment.created_at|date:"M d, Y H:i" }}</p>
+                            {% if payment.verified_at %}
+                                <p><strong>Verified:</strong> {{ payment.verified_at|date:"M d, Y H:i" }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Screenshot Display -->
+                    {% if payment.payment_screenshot %}
+                        <div class="border rounded p-4 mb-4">
+                            <h5 class="text-primary mb-3">
+                                <i class="fas fa-image me-2"></i>Payment Screenshot
+                            </h5>
+                            <div class="alert alert-success mb-3">
+                                <i class="fas fa-check-circle me-2"></i>
+                                <strong>Screenshot uploaded successfully!</strong> Admin will verify your payment soon.
+                            </div>
+                            <div class="text-center">
+                                <img src="{{ payment.payment_screenshot.url }}" alt="Payment Screenshot" 
+                                     class="img-fluid border rounded shadow-sm" style="max-width: 100%; max-height: 400px;">
+                                <br><br>
+                                <a href="{{ payment.payment_screenshot.url }}" target="_blank" class="btn btn-outline-primary">
+                                    <i class="fas fa-external-link-alt me-2"></i>View Full Size
+                                </a>
+                                {% if user.is_staff %}
+                                    <a href="{% url 'admin:payment_system_payment_change' payment.id %}" class="btn btn-outline-secondary ms-2">
+                                        <i class="fas fa-cog me-2"></i>Admin Actions
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- Screenshot Upload Section -->
+                    {% if payment.status == 'pending' and not payment.payment_screenshot %}
+                        <div class="border rounded p-4 mb-4">
+                            <h5 class="text-primary mb-3">
+                                <i class="fas fa-upload me-2"></i>Upload Payment Screenshot
+                            </h5>
+                            <div class="alert alert-info mb-3">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Next Step:</strong> Please upload a screenshot of your payment confirmation to complete the enrollment process.
+                            </div>
+                            
+                            <form method="post" enctype="multipart/form-data">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label for="payment_screenshot" class="form-label">Payment Screenshot *</label>
+                                    <input type="file" class="form-control" id="payment_screenshot" name="payment_screenshot" accept="image/*" required>
+                                    <div class="form-text">
+                                        <i class="fas fa-lightbulb me-1"></i>
+                                        Upload a clear screenshot of your payment confirmation. Supported formats: JPG, PNG, GIF.
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-upload me-2"></i>Upload Screenshot
+                                </button>
+                            </form>
+                        </div>
+                    {% endif %}
+
+                    <!-- Student Notes -->
+                    {% if payment.student_notes %}
+                        <div class="border rounded p-4 mb-4">
+                            <h5 class="text-primary">Your Notes</h5>
+                            <p class="mb-0">{{ payment.student_notes }}</p>
+                        </div>
+                    {% endif %}
+
+                    <!-- Admin Notes -->
+                    {% if payment.admin_notes %}
+                        <div class="border rounded p-4 mb-4 bg-light">
+                            <h5 class="text-primary">Admin Notes</h5>
+                            <p class="mb-0">{{ payment.admin_notes }}</p>
+                        </div>
+                    {% endif %}
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'courses:course_detail' payment.course.slug %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Course
+                        </a>
+                        <a href="{% url 'payment_system:my_payments' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-list me-2"></i>My Payments
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -18,7 +18,7 @@ def payment_page(request, slug):
     # Check if already enrolled
     if Enrollment.objects.filter(student=request.user, course=course, is_active=True).exists():
         messages.warning(request, 'You are already enrolled in this course.')
-        return redirect('course_detail', slug=slug)
+        return redirect('courses:course_detail', slug=slug)
     
     # Check if payment already exists
     existing_payment = Payment.objects.filter(
@@ -29,7 +29,7 @@ def payment_page(request, slug):
     
     if existing_payment:
         messages.info(request, 'You have a pending payment for this course.')
-        return redirect('payment_detail', payment_id=existing_payment.id)
+        return redirect('payment_system:payment_detail', payment_id=existing_payment.id)
     
     payment_methods = PaymentMethod.objects.filter(is_active=True)
     payment_settings = PaymentSettings.get_settings()
@@ -39,6 +39,7 @@ def payment_page(request, slug):
         transaction_id = request.POST.get('transaction_id', '')
         reference_number = request.POST.get('reference_number', '')
         student_notes = request.POST.get('student_notes', '')
+        payment_screenshot = request.FILES.get('payment_screenshot')
         
         if payment_method_id:
             payment_method = get_object_or_404(PaymentMethod, id=payment_method_id)
@@ -55,8 +56,15 @@ def payment_page(request, slug):
                 status='pending'
             )
             
-            messages.success(request, 'Payment submitted successfully! Please upload your payment screenshot.')
-            return redirect('payment_detail', payment_id=payment.id)
+            # Handle screenshot upload if provided
+            if payment_screenshot:
+                payment.payment_screenshot = payment_screenshot
+                payment.save()
+                messages.success(request, 'Payment submitted successfully with screenshot! Admin will verify it soon.')
+            else:
+                messages.success(request, 'Payment submitted successfully! Please upload your payment screenshot.')
+            
+            return redirect('payment_system:payment_detail', payment_id=payment.id)
         else:
             messages.error(request, 'Please select a payment method.')
     
@@ -79,7 +87,8 @@ def payment_detail(request, payment_id):
             payment.payment_screenshot = payment_screenshot
             payment.save()
             messages.success(request, 'Payment screenshot uploaded successfully! Admin will verify it soon.')
-            return redirect('payment_status', payment_id=payment.id)
+            # Stay on the same page instead of redirecting
+            return redirect('payment_system:payment_detail', payment_id=payment.id)
         else:
             messages.error(request, 'Please upload a payment screenshot.')
     
@@ -169,7 +178,7 @@ def approve_payment(request, payment_id):
     else:
         messages.error(request, 'Payment cannot be approved.')
     
-    return redirect('admin_payments')
+    return redirect('payment_system:admin_payments')
 
 @staff_member_required
 @require_POST
@@ -184,7 +193,7 @@ def reject_payment(request, payment_id):
     else:
         messages.error(request, 'Payment cannot be rejected.')
     
-    return redirect('admin_payments')
+    return redirect('payment_system:admin_payments')
 
 @staff_member_required
 def payment_methods_admin(request):
@@ -203,7 +212,7 @@ def payment_methods_admin(request):
                 account_number=account_number
             )
             messages.success(request, 'Payment method added successfully.')
-            return redirect('payment_methods_admin')
+            return redirect('payment_system:payment_methods_admin')
         else:
             messages.error(request, 'Please fill in all required fields.')
     
@@ -223,7 +232,7 @@ def toggle_payment_method(request, method_id):
     status = 'activated' if payment_method.is_active else 'deactivated'
     messages.success(request, f'Payment method {status} successfully.')
     
-    return redirect('payment_methods_admin')
+    return redirect('payment_system:payment_methods_admin')
 
 def payment_instructions(request):
     """Payment instructions page"""

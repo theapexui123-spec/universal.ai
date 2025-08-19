@@ -1,0 +1,316 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ lesson.title }} - {{ course.title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Course Content Sidebar -->
+        <div class="col-lg-3">
+            <div class="card shadow-sm sticky-top" style="top: 20px;">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>Course Content
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for course_lesson in course.lessons.all %}
+                            <a href="{% url 'courses:lesson_detail' course.slug course_lesson.id %}" 
+                               class="list-group-item list-group-item-action d-flex justify-content-between align-items-center {% if course_lesson.id == lesson.id %}active{% endif %}">
+                                <div>
+                                    {% if course_lesson.is_free %}
+                                        <i class="fas fa-play-circle me-2 text-success"></i>
+                                    {% else %}
+                                        <i class="fas fa-play-circle me-2"></i>
+                                    {% endif %}
+                                    <span class="{% if course_lesson.id == lesson.id %}fw-bold{% endif %}">{{ course_lesson.title }}</span>
+                                </div>
+                                <span class="badge bg-secondary rounded-pill">{{ course_lesson.duration }} min</span>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'courses:course_learn' course.slug %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Course
+                        </a>
+                        <a href="{% url 'courses:course_detail' course.slug %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-info-circle me-2"></i>Course Overview
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="col-lg-9">
+            <!-- Lesson Header -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <nav aria-label="breadcrumb">
+                                <ol class="breadcrumb mb-2">
+                                    <li class="breadcrumb-item"><a href="{% url 'courses:course_learn' course.slug %}">{{ course.title }}</a></li>
+                                    <li class="breadcrumb-item active">{{ lesson.title }}</li>
+                                </ol>
+                            </nav>
+                            <h2 class="mb-2">{{ lesson.title }}</h2>
+                            <p class="text-muted mb-3">{{ lesson.description|default:"No description available." }}</p>
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="badge bg-primary me-2">{{ course.category.name }}</span>
+                                <span class="badge bg-secondary me-2">{{ course.difficulty|title }}</span>
+                                <span class="badge bg-info me-2">{{ lesson.duration }} minutes</span>
+                                {% if lesson.is_free %}
+                                    <span class="badge bg-success">Free</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="progress mb-2" style="height: 8px;">
+                                <div class="progress-bar" role="progressbar" style="width: {{ progress_percentage }}%"></div>
+                            </div>
+                            <small class="text-muted">{{ completed_lessons }} of {{ total_lessons }} lessons completed</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Video Player -->
+            {% if lesson.has_video %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-play-circle me-2"></i>Video Lesson
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        {% if lesson.video_file %}
+                            <!-- Uploaded video file -->
+                            <video controls class="w-100" style="border-radius: 0 0 8px 8px;">
+                                <source src="{{ lesson.video_file.url }}" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        {% elif lesson.video_url %}
+                            <!-- External video URL -->
+                            <div class="ratio ratio-16x9">
+                                {% if 'youtube.com' in lesson.video_url or 'youtu.be' in lesson.video_url %}
+                                    {% if 'youtube.com/watch?v=' in lesson.video_url %}
+                                        {% with video_id=lesson.video_url|slice:"32:" %}
+                                            <iframe src="https://www.youtube.com/embed/{{ video_id }}" 
+                                                    title="{{ lesson.title }}" 
+                                                    frameborder="0" 
+                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                                    allowfullscreen></iframe>
+                                        {% endwith %}
+                                    {% elif 'youtu.be/' in lesson.video_url %}
+                                        {% with video_id=lesson.video_url|slice:"17:" %}
+                                            <iframe src="https://www.youtube.com/embed/{{ video_id }}" 
+                                                    title="{{ lesson.title }}" 
+                                                    frameborder="0" 
+                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                                    allowfullscreen></iframe>
+                                        {% endwith %}
+                                    {% else %}
+                                        <iframe src="{{ lesson.video_url }}" 
+                                                title="{{ lesson.title }}" 
+                                                frameborder="0" 
+                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                                allowfullscreen></iframe>
+                                    {% endif %}
+                                {% else %}
+                                    <iframe src="{{ lesson.video_url }}" 
+                                            title="{{ lesson.title }}" 
+                                            frameborder="0" 
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                            allowfullscreen></iframe>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>No video content available for this lesson.</strong> The lesson content will be available soon.
+                </div>
+            {% endif %}
+
+            <!-- Lesson Content -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-text me-2"></i>Lesson Content
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if lesson.description %}
+                        {{ lesson.description|linebreaks }}
+                    {% else %}
+                        <p class="text-muted">No additional content available for this lesson.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Lesson Navigation -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        {% if lesson.get_previous_by_order %}
+                            <a href="{% url 'courses:lesson_detail' course.slug lesson.get_previous_by_order.id %}" 
+                               class="btn btn-outline-primary">
+                                <i class="fas fa-chevron-left me-2"></i>Previous Lesson
+                            </a>
+                        {% else %}
+                            <button class="btn btn-outline-secondary" disabled>
+                                <i class="fas fa-chevron-left me-2"></i>Previous Lesson
+                            </button>
+                        {% endif %}
+
+                        <!-- Mark as Complete Button -->
+                        <form method="post" action="{% url 'courses:mark_lesson_complete' lesson.id %}" class="d-inline" id="completeForm">
+                            {% csrf_token %}
+                            {% if lesson_completed %}
+                                <button type="button" class="btn btn-success" disabled>
+                                    <i class="fas fa-check me-2"></i>Completed
+                                </button>
+                            {% else %}
+                                <button type="submit" class="btn btn-primary" id="completeBtn">
+                                    <i class="fas fa-check me-2"></i>Mark as Complete
+                                </button>
+                            {% endif %}
+                        </form>
+
+                        {% if lesson.get_next_by_order %}
+                            <a href="{% url 'courses:lesson_detail' course.slug lesson.get_next_by_order.id %}" 
+                               class="btn btn-outline-primary">
+                                Next Lesson<i class="fas fa-chevron-right ms-2"></i>
+                            </a>
+                        {% else %}
+                            <button class="btn btn-outline-secondary" disabled>
+                                Next Lesson<i class="fas fa-chevron-right ms-2"></i>
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Course Progress Summary -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>Your Progress
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <h4 class="text-primary" id="completedLessonsCount">{{ completed_lessons }}</h4>
+                            <small class="text-muted">Lessons Completed</small>
+                        </div>
+                        <div class="col-md-4">
+                            <h4 class="text-success" id="progressPercentage">{{ progress_percentage }}%</h4>
+                            <small class="text-muted">Course Progress</small>
+                        </div>
+                        <div class="col-md-4">
+                            <h4 class="text-info">{{ total_lessons }}</h4>
+                            <small class="text-muted">Total Lessons</small>
+                        </div>
+                    </div>
+                    <div class="progress mt-3" style="height: 10px;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ progress_percentage }}%" id="progressBar"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Toast -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="successToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header bg-success text-white">
+            <i class="fas fa-check-circle me-2"></i>
+            <strong class="me-auto">Success!</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            Lesson marked as complete! Great job!
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const completeForm = document.getElementById('completeForm');
+    const completeBtn = document.getElementById('completeBtn');
+    const successToast = document.getElementById('successToast');
+    
+    if (completeForm && completeBtn) {
+        completeForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Disable button and show loading state
+            completeBtn.disabled = true;
+            completeBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Marking Complete...';
+            
+            // Get form data
+            const formData = new FormData(completeForm);
+            
+            // Send AJAX request
+            fetch(completeForm.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update button to completed state
+                    completeBtn.className = 'btn btn-success';
+                    completeBtn.disabled = true;
+                    completeBtn.innerHTML = '<i class="fas fa-check me-2"></i>Completed';
+                    
+                    // Update progress
+                    const currentCompleted = parseInt(document.getElementById('completedLessonsCount').textContent);
+                    const totalLessons = {{ total_lessons }};
+                    const newCompleted = currentCompleted + 1;
+                    const newProgress = Math.round((newCompleted / totalLessons) * 100);
+                    
+                    document.getElementById('completedLessonsCount').textContent = newCompleted;
+                    document.getElementById('progressPercentage').textContent = newProgress + '%';
+                    document.getElementById('progressBar').style.width = newProgress + '%';
+                    
+                    // Show success toast
+                    const toast = new bootstrap.Toast(successToast);
+                    toast.show();
+                    
+                    // Update progress text in header
+                    const progressText = document.querySelector('.text-muted');
+                    if (progressText) {
+                        progressText.textContent = newCompleted + ' of ' + totalLessons + ' lessons completed';
+                    }
+                    
+                } else {
+                    // Handle error
+                    alert('Error marking lesson as complete. Please try again.');
+                    completeBtn.disabled = false;
+                    completeBtn.innerHTML = '<i class="fas fa-check me-2"></i>Mark as Complete';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error marking lesson as complete. Please try again.');
+                completeBtn.disabled = false;
+                completeBtn.innerHTML = '<i class="fas fa-check me-2"></i>Mark as Complete';
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

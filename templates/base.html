@@ -27,6 +27,9 @@
         body {
             font-family: 'Inter', sans-serif;
             line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
         
         .navbar-brand {
@@ -70,10 +73,63 @@
             transform: translateY(-2px);
         }
         
+        /* Sticky Footer Implementation */
+        main {
+            flex: 1 0 auto;
+        }
+        
         .footer {
-            background-color: var(--dark-color);
+            flex-shrink: 0;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
             color: white;
-            padding: 50px 0 20px;
+            padding: 60px 0 30px;
+            margin-top: auto;
+        }
+        
+        .footer h5, .footer h6 {
+            color: #ecf0f1;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        
+        .footer a {
+            color: #bdc3c7;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .footer a:hover {
+            color: #3498db;
+            text-decoration: none;
+        }
+        
+        .footer .social-links a {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            text-align: center;
+            line-height: 40px;
+            margin-right: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .footer .social-links a:hover {
+            background: #3498db;
+            color: white;
+            transform: translateY(-3px);
+        }
+        
+        .footer .contact-info i {
+            color: #3498db;
+            width: 20px;
+        }
+        
+        .footer-bottom {
+            background: rgba(0,0,0,0.2);
+            padding: 20px 0;
+            margin-top: 40px;
         }
         
         .rating {
@@ -95,6 +151,39 @@
             font-size: 0.875rem;
             color: var(--secondary-color);
         }
+        
+        /* Fix dropdown menu z-index issue */
+        .dropdown-menu {
+            z-index: 1050;
+        }
+        
+        .navbar .dropdown-menu {
+            z-index: 1050;
+        }
+        
+        .toast-container {
+            z-index: 1060;
+        }
+        
+        .card {
+            z-index: 1;
+        }
+        
+        .sticky-top {
+            z-index: 1020;
+        }
+        
+        /* Responsive footer */
+        @media (max-width: 768px) {
+            .footer {
+                padding: 40px 0 20px;
+            }
+            
+            .footer .col-md-3,
+            .footer .col-md-4 {
+                margin-bottom: 30px;
+            }
+        }
     </style>
     
     {% block extra_css %}{% endblock %}
@@ -104,7 +193,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="{% url 'courses:home' %}">
-                <i class="fas fa-graduation-cap me-2"></i>AI Course Platform
+                <i class="fas fa-brain me-2"></i>AI Course Platform
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -170,32 +259,67 @@
     </main>
 
     <!-- Footer -->
-    <footer class="footer mt-5">
+    <footer class="footer">
         <div class="container">
             <div class="row">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <h5><i class="fas fa-graduation-cap me-2"></i>AI Course Platform</h5>
-                    <p class="text-muted">Empowering learners with cutting-edge AI courses and practical knowledge.</p>
+                    <p class="text-muted">Empowering learners with cutting-edge AI courses and practical knowledge. Join thousands of students mastering artificial intelligence.</p>
+                    <div class="social-links mt-3">
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#"><i class="fab fa-youtube"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                    </div>
                 </div>
-                <div class="col-md-4">
-                    <h6>Quick Links</h6>
+                <div class="col-md-3">
+                    <h6><i class="fas fa-link me-2"></i>Quick Links</h6>
                     <ul class="list-unstyled">
-                        <li><a href="{% url 'courses:home' %}" class="text-muted text-decoration-none">Home</a></li>
-                        <li><a href="{% url 'courses:course_list' %}" class="text-muted text-decoration-none">Courses</a></li>
-                        <li><a href="{% url 'payment_system:payment_instructions' %}" class="text-muted text-decoration-none">Payment Info</a></li>
+                        <li class="mb-2"><a href="{% url 'courses:home' %}"><i class="fas fa-home me-2"></i>Home</a></li>
+                        <li class="mb-2"><a href="{% url 'courses:course_list' %}"><i class="fas fa-book me-2"></i>All Courses</a></li>
+                        <li class="mb-2"><a href="{% url 'payment_system:payment_instructions' %}"><i class="fas fa-credit-card me-2"></i>Payment Info</a></li>
+                        <li class="mb-2"><a href="#"><i class="fas fa-certificate me-2"></i>Certificates</a></li>
+                        <li class="mb-2"><a href="#"><i class="fas fa-users me-2"></i>Community</a></li>
+                        <li class="mb-2"><a href="#"><i class="fas fa-question-circle me-2"></i>Help Center</a></li>
                     </ul>
                 </div>
-                <div class="col-md-4">
-                    <h6>Contact</h6>
-                    <ul class="list-unstyled text-muted">
-                        <li><i class="fas fa-envelope me-2"></i>info@aicourseplatform.com</li>
-                        <li><i class="fas fa-phone me-2"></i>+92 300 1234567</li>
+                <div class="col-md-3">
+                    <h6><i class="fas fa-graduation-cap me-2"></i>Learning</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#"><i class="fas fa-robot me-2"></i>Machine Learning</a></li>
+                        <li class="mb-2"><a href="#"><i class="fas fa-brain me-2"></i>Deep Learning</a></li>
+                        <li class="mb-2"><a href="#"><i class="fas fa-eye me-2"></i>Computer Vision</a></li>
+                        <li class="mb-2"><a href="#"><i class="fas fa-comments me-2"></i>NLP</a></li>
+                        <li class="mb-2"><a href="#"><i class="fas fa-chart-line me-2"></i>Data Science</a></li>
+                        <li class="mb-2"><a href="#"><i class="fas fa-code me-2"></i>AI Programming</a></li>
                     </ul>
+                </div>
+                <div class="col-md-3">
+                    <h6><i class="fas fa-address-card me-2"></i>Contact Info</h6>
+                    <div class="contact-info">
+                        <p class="mb-2"><i class="fas fa-envelope me-2"></i>info@aicourseplatform.com</p>
+                        <p class="mb-2"><i class="fas fa-phone me-2"></i>+92 300 1234567</p>
+                        <p class="mb-2"><i class="fab fa-whatsapp me-2"></i>+92 300 1234567</p>
+                        <p class="mb-2"><i class="fas fa-clock me-2"></i>24/7 Support</p>
+                        <p class="mb-2"><i class="fas fa-map-marker-alt me-2"></i>Pakistan</p>
+                    </div>
                 </div>
             </div>
-            <hr class="my-4">
-            <div class="text-center text-muted">
-                <small>&copy; 2025 AI Course Platform. All rights reserved.</small>
+            
+            <div class="footer-bottom">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <small class="text-muted">&copy; 2025 AI Course Platform. All rights reserved.</small>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <small class="text-muted">
+                            <a href="#" class="me-3">Privacy Policy</a>
+                            <a href="#" class="me-3">Terms of Service</a>
+                            <a href="#">Cookie Policy</a>
+                        </small>
+                    </div>
+                </div>
             </div>
         </div>
     </footer>

@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}My Courses{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">
+                    <i class="fas fa-graduation-cap me-2"></i>My Courses
+                </h2>
+                <a href="{% url 'courses:course_list' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-plus me-2"></i>Browse More Courses
+                </a>
+            </div>
+
+            {% if enrollments %}
+                <div class="row">
+                    {% for enrollment in enrollments %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100 shadow-sm">
+                                {% if enrollment.course.thumbnail %}
+                                    <img src="{{ enrollment.course.thumbnail.url }}" class="card-img-top" alt="{{ enrollment.course.title }}" style="height: 200px; object-fit: cover;">
+                                {% else %}
+                                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                                        <i class="fas fa-image text-muted" style="font-size: 3rem;"></i>
+                                    </div>
+                                {% endif %}
+                                
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h5 class="card-title mb-0">{{ enrollment.course.title }}</h5>
+                                        <span class="badge bg-primary">{{ enrollment.course.category.name }}</span>
+                                    </div>
+                                    
+                                    <p class="card-text text-muted">{{ enrollment.course.description|truncatewords:20 }}</p>
+                                    
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <small class="text-muted">Progress</small>
+                                            <small class="text-muted">{{ enrollment.progress_percentage }}%</small>
+                                        </div>
+                                        <div class="progress" style="height: 6px;">
+                                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ enrollment.progress_percentage }}%"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row text-center mb-3">
+                                        <div class="col-4">
+                                            <small class="text-muted d-block">Duration</small>
+                                            <strong>{{ enrollment.course.duration }}</strong>
+                                        </div>
+                                        <div class="col-4">
+                                            <small class="text-muted d-block">Lessons</small>
+                                            <strong>{{ enrollment.course.lessons.count }}</strong>
+                                        </div>
+                                        <div class="col-4">
+                                            <small class="text-muted d-block">Completed</small>
+                                            <strong>{{ enrollment.completed_lessons }}</strong>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="text-muted">Enrolled: {{ enrollment.enrolled_at|date:"M d, Y" }}</small>
+                                        {% if enrollment.completed_at %}
+                                            <span class="badge bg-success">Completed</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="card-footer bg-transparent">
+                                    <div class="d-grid gap-2">
+                                        {% if enrollment.completed_at %}
+                                            <a href="{% url 'courses:course_learn' enrollment.course.slug %}" class="btn btn-success btn-sm">
+                                                <i class="fas fa-certificate me-2"></i>View Certificate
+                                            </a>
+                                        {% else %}
+                                            <a href="{% url 'courses:course_learn' enrollment.course.slug %}" class="btn btn-primary btn-sm">
+                                                <i class="fas fa-play me-2"></i>Continue Learning
+                                            </a>
+                                        {% endif %}
+                                        <a href="{% url 'courses:course_detail' enrollment.course.slug %}" class="btn btn-outline-secondary btn-sm">
+                                            <i class="fas fa-info-circle me-2"></i>Course Details
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Statistics -->
+                <div class="row mt-5">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-chart-bar me-2"></i>Learning Statistics
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <div class="col-md-3">
+                                        <div class="mb-3">
+                                            <h3 class="text-primary">{{ enrollments.count }}</h3>
+                                            <small class="text-muted">Total Courses</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="mb-3">
+                                            <h3 class="text-success">{{ completed_courses }}</h3>
+                                            <small class="text-muted">Completed</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="mb-3">
+                                            <h3 class="text-info">{{ total_lessons }}</h3>
+                                            <small class="text-muted">Total Lessons</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="mb-3">
+                                            <h3 class="text-warning">{{ completed_lessons }}</h3>
+                                            <small class="text-muted">Lessons Completed</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <div class="mb-4">
+                        <i class="fas fa-graduation-cap text-muted" style="font-size: 4rem;"></i>
+                    </div>
+                    <h4 class="text-muted mb-3">No Courses Enrolled</h4>
+                    <p class="text-muted mb-4">You haven't enrolled in any courses yet. Start your learning journey by browsing our course catalog!</p>
+                    <a href="{% url 'courses:course_list' %}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-search me-2"></i>Browse Courses
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

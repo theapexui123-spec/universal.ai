@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ course.title }} - Learning{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Course Content Sidebar -->
+        <div class="col-lg-3">
+            <div class="card shadow-sm sticky-top" style="top: 20px;">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>Course Content
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for lesson in course.lessons.all %}
+                            <a href="{% url 'courses:lesson_detail' course.slug lesson.id %}" 
+                               class="list-group-item list-group-item-action d-flex justify-content-between align-items-center {% if lesson.id == current_lesson.id %}active{% endif %}">
+                                <div>
+                                    <i class="fas fa-play-circle me-2"></i>
+                                    <span class="{% if lesson.id == current_lesson.id %}fw-bold{% endif %}">{{ lesson.title }}</span>
+                                </div>
+                                <span class="badge bg-secondary rounded-pill">{{ lesson.duration }} min</span>
+                            </a>
+                        {% empty %}
+                            <div class="list-group-item text-muted">
+                                <i class="fas fa-info-circle me-2"></i>No lessons available yet
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="d-grid">
+                        <a href="{% url 'courses:course_detail' course.slug %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Course
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="col-lg-9">
+            <!-- Course Header -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h2 class="mb-2">{{ course.title }}</h2>
+                            <p class="text-muted mb-3">{{ course.description|truncatewords:30 }}</p>
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="badge bg-primary me-2">{{ course.category.name }}</span>
+                                <span class="badge bg-secondary me-2">{{ course.difficulty|title }}</span>
+                                <span class="badge bg-info">{{ course.duration }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="progress mb-2" style="height: 8px;">
+                                <div class="progress-bar" role="progressbar" style="width: {{ progress_percentage }}%"></div>
+                            </div>
+                            <small class="text-muted">{{ completed_lessons }} of {{ total_lessons }} lessons completed</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Welcome Message -->
+            {% if not current_lesson %}
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <div class="mb-4">
+                            <i class="fas fa-graduation-cap text-primary" style="font-size: 4rem;"></i>
+                        </div>
+                        <h3 class="mb-3">Welcome to {{ course.title }}!</h3>
+                        <p class="text-muted mb-4">
+                            You're all set to start learning. Choose a lesson from the sidebar to begin your journey.
+                        </p>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="text-center mb-3">
+                                    <i class="fas fa-play-circle text-primary mb-2" style="font-size: 2rem;"></i>
+                                    <h6>Start Learning</h6>
+                                    <small class="text-muted">Begin with the first lesson</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center mb-3">
+                                    <i class="fas fa-clock text-primary mb-2" style="font-size: 2rem;"></i>
+                                    <h6>{{ course.duration }}</h6>
+                                    <small class="text-muted">Total duration</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center mb-3">
+                                    <i class="fas fa-certificate text-primary mb-2" style="font-size: 2rem;"></i>
+                                    <h6>Certificate</h6>
+                                    <small class="text-muted">Earn upon completion</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% if course.lessons.first %}
+                            <div class="mt-4">
+                                <a href="{% url 'courses:lesson_detail' course.slug course.lessons.first.id %}" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-play me-2"></i>Start First Lesson
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Course Requirements -->
+            {% if course.requirements %}
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-list-check me-2"></i>Course Requirements
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {{ course.requirements|linebreaks }}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- What You'll Learn -->
+            {% if course.what_you_will_learn %}
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-lightbulb me-2"></i>What You'll Learn
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {{ course.what_you_will_learn|linebreaks }}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Course Reviews -->
+            <div class="card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-star me-2"></i>Student Reviews
+                    </h5>
+                    <a href="{% url 'courses:add_review' course.slug %}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-plus me-2"></i>Add Review
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if course.reviews.all %}
+                        {% for review in course.reviews.all|slice:":3" %}
+                            <div class="border-bottom pb-3 mb-3">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h6 class="mb-1">{{ review.student.get_full_name|default:review.student.username }}</h6>
+                                        <div class="text-warning">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= review.rating %}
+                                                    <i class="fas fa-star"></i>
+                                                {% else %}
+                                                    <i class="far fa-star"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">{{ review.created_at|date:"M d, Y" }}</small>
+                                </div>
+                                <p class="mb-0">{{ review.comment|truncatewords:50 }}</p>
+                            </div>
+                        {% endfor %}
+                        {% if course.reviews.count > 3 %}
+                            <div class="text-center">
+                                <a href="{% url 'courses:course_detail' course.slug %}#reviews" class="btn btn-outline-secondary btn-sm">
+                                    View All {{ course.reviews.count }} Reviews
+                                </a>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <p class="text-muted text-center py-3">
+                            <i class="fas fa-comments mb-2" style="font-size: 2rem;"></i><br>
+                            No reviews yet. Be the first to review this course!
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

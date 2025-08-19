@@ -89,10 +89,24 @@ def course_detail(request, slug):
     """Course detail page"""
     course = get_object_or_404(Course, slug=slug, is_published=True)
     
-    # Check if user is enrolled
+    # Check user access and enrollment status
+    user_has_access = False
     is_enrolled = False
+    payment_status = None
+    
     if request.user.is_authenticated:
-        is_enrolled = Enrollment.objects.filter(student=request.user, course=course, is_active=True).exists()
+        user_has_access = course.user_has_access(request.user)
+        is_enrolled = course.user_is_enrolled(request.user)
+        
+        # Check payment status
+        from payment_system.models import Payment
+        payment = Payment.objects.filter(
+            student=request.user,
+            course=course
+        ).order_by('-created_at').first()
+        
+        if payment:
+            payment_status = payment.status
     
     # Get lessons
     lessons = course.lessons.all()
@@ -114,7 +128,9 @@ def course_detail(request, slug):
         'lessons': lessons,
         'reviews': reviews,
         'related_courses': related_courses,
+        'user_has_access': user_has_access,
         'is_enrolled': is_enrolled,
+        'payment_status': payment_status,
         'payment_methods': payment_methods,
     }
     return render(request, 'courses/course_detail.html', context)
@@ -145,15 +161,36 @@ def course_enroll(request, slug):
 
 @login_required
 def course_learn(request, slug):
-    """Course learning page for enrolled students"""
+    """Course learning page"""
     course = get_object_or_404(Course, slug=slug)
     
-    # Check if user is enrolled
-    enrollment = get_object_or_404(Enrollment, student=request.user, course=course, is_active=True)
+    # Check if user has access to this course
+    if not course.user_has_access(request.user):
+        if course.is_free():
+            messages.error(request, 'You need to be logged in to access this course.')
+        else:
+            messages.error(request, 'You need to purchase this course to access its content.')
+        return redirect('courses:course_detail', slug=slug)
     
-    # Get lessons with progress
+    # Check if user is enrolled, if not create enrollment
+    enrollment, created = Enrollment.objects.get_or_create(
+        student=request.user,
+        course=course,
+        defaults={'is_active': True}
+    )
+    
+    if created:
+        # Update course enrollment count
+        course.students_enrolled += 1
+        course.save()
+    
+    # Get all lessons
     lessons = course.lessons.all()
+    
+    # Get progress for each lesson
     lesson_progress = {}
+    completed_lessons = 0
+    total_lessons = lessons.count()
     
     for lesson in lessons:
         progress, created = CourseProgress.objects.get_or_create(
@@ -162,12 +199,20 @@ def course_learn(request, slug):
             defaults={'completed': False}
         )
         lesson_progress[lesson.id] = progress
+        if progress.completed:
+            completed_lessons += 1
+    
+    # Calculate progress percentage
+    progress_percentage = (completed_lessons / total_lessons * 100) if total_lessons > 0 else 0
     
     context = {
         'course': course,
         'enrollment': enrollment,
         'lessons': lessons,
         'lesson_progress': lesson_progress,
+        'completed_lessons': completed_lessons,
+        'total_lessons': total_lessons,
+        'progress_percentage': round(progress_percentage, 1),
     }
     return render(request, 'courses/course_learn.html', context)
 
@@ -177,28 +222,67 @@ def lesson_detail(request, slug, lesson_id):
     course = get_object_or_404(Course, slug=slug)
     lesson = get_object_or_404(Lesson, id=lesson_id, course=course)
     
-    # Check if user is enrolled
-    enrollment = get_object_or_404(Enrollment, student=request.user, course=course, is_active=True)
+    # Check if user has access to this lesson
+    if not lesson.user_has_access(request.user):
+        if lesson.is_free:
+            messages.error(request, 'You need to be logged in to access this lesson.')
+        else:
+            messages.error(request, 'You need to purchase this course to access this lesson.')
+        return redirect('courses:course_detail', slug=slug)
     
-    # Get or create progress
+    # Check if user is enrolled, if not create enrollment
+    enrollment, created = Enrollment.objects.get_or_create(
+        student=request.user,
+        course=course,
+        defaults={'is_active': True}
+    )
+    
+    if created:
+        # Update course enrollment count
+        course.students_enrolled += 1
+        course.save()
+    
+    # Get or create progress for this lesson
     progress, created = CourseProgress.objects.get_or_create(
         student=request.user,
         lesson=lesson,
         defaults={'completed': False}
     )
     
+    # Get all lessons and calculate overall progress
+    lessons = course.lessons.all()
+    completed_lessons = 0
+    total_lessons = lessons.count()
+    
+    for course_lesson in lessons:
+        lesson_progress, created = CourseProgress.objects.get_or_create(
+            student=request.user,
+            lesson=course_lesson,
+            defaults={'completed': False}
+        )
+        if lesson_progress.completed:
+            completed_lessons += 1
+    
+    # Calculate progress percentage
+    progress_percentage = (completed_lessons / total_lessons * 100) if total_lessons > 0 else 0
+    
     # Get next and previous lessons
-    lessons = list(course.lessons.all())
-    current_index = lessons.index(lesson)
-    next_lesson = lessons[current_index + 1] if current_index < len(lessons) - 1 else None
-    prev_lesson = lessons[current_index - 1] if current_index > 0 else None
+    lessons_list = list(lessons)
+    current_index = lessons_list.index(lesson)
+    next_lesson = lessons_list[current_index + 1] if current_index < len(lessons_list) - 1 else None
+    prev_lesson = lessons_list[current_index - 1] if current_index > 0 else None
     
     context = {
         'course': course,
         'lesson': lesson,
+        'current_lesson': lesson,
         'progress': progress,
+        'lesson_completed': progress.completed,
         'next_lesson': next_lesson,
         'prev_lesson': prev_lesson,
+        'completed_lessons': completed_lessons,
+        'total_lessons': total_lessons,
+        'progress_percentage': round(progress_percentage, 1),
     }
     return render(request, 'courses/lesson_detail.html', context)
 
@@ -230,8 +314,35 @@ def my_courses(request):
     """User's enrolled courses"""
     enrollments = Enrollment.objects.filter(student=request.user, is_active=True).order_by('-enrolled_at')
     
+    # Calculate progress for each enrollment
+    for enrollment in enrollments:
+        lessons = enrollment.course.lessons.all()
+        completed_lessons = 0
+        total_lessons = lessons.count()
+        
+        for lesson in lessons:
+            progress, created = CourseProgress.objects.get_or_create(
+                student=request.user,
+                lesson=lesson,
+                defaults={'completed': False}
+            )
+            if progress.completed:
+                completed_lessons += 1
+        
+        enrollment.completed_lessons = completed_lessons
+        enrollment.total_lessons = total_lessons
+        enrollment.progress_percentage = (completed_lessons / total_lessons * 100) if total_lessons > 0 else 0
+    
+    # Calculate overall statistics
+    completed_courses = sum(1 for e in enrollments if e.completed_lessons == e.total_lessons and e.total_lessons > 0)
+    total_lessons = sum(e.total_lessons for e in enrollments)
+    completed_lessons = sum(e.completed_lessons for e in enrollments)
+    
     context = {
         'enrollments': enrollments,
+        'completed_courses': completed_courses,
+        'total_lessons': total_lessons,
+        'completed_lessons': completed_lessons,
     }
     return render(request, 'courses/my_courses.html', context)
 
@@ -273,8 +384,13 @@ def category_courses(request, category_id):
     category = get_object_or_404(Category, id=category_id)
     courses = Course.objects.filter(category=category, is_published=True).order_by('-created_at')
     
+    # Pagination
+    paginator = Paginator(courses, 12)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
     context = {
         'category': category,
-        'courses': courses,
+        'page_obj': page_obj,
     }
     return render(request, 'courses/category_courses.html', context)

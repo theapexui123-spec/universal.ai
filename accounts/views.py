@@ -1,20 +1,18 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate
-from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth.models import User
 from .models import UserProfile
-from .forms import UserProfileForm
+from .forms import UserProfileForm, UserRegistrationForm
 
 def register(request):
     """User registration view"""
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = UserRegistrationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            # Create user profile
-            UserProfile.objects.create(user=user)
+            # UserProfile is automatically created by the signal in models.py
             
             # Log the user in
             username = form.cleaned_data.get('username')
@@ -23,9 +21,9 @@ def register(request):
             login(request, user)
             
             messages.success(request, f'Welcome {username}! Your account has been created successfully.')
-            return redirect('home')
+            return redirect('courses:home')
     else:
-        form = UserCreationForm()
+        form = UserRegistrationForm()
     
     return render(request, 'accounts/register.html', {'form': form})
 
@@ -37,7 +35,7 @@ def profile(request):
         if form.is_valid():
             form.save()
             messages.success(request, 'Profile updated successfully!')
-            return redirect('profile')
+            return redirect('accounts:profile')
     else:
         form = UserProfileForm(instance=request.user.profile)
     

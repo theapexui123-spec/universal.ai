@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}My Payments{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">
+                    <i class="fas fa-credit-card me-2"></i>My Payments
+                </h2>
+                <a href="{% url 'courses:course_list' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-plus me-2"></i>Browse Courses
+                </a>
+            </div>
+
+            {% if page_obj %}
+                <div class="row">
+                    {% for payment in page_obj %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-header bg-light">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0">{{ payment.course.title }}</h6>
+                                        <span class="badge {% if payment.status == 'pending' %}bg-warning{% elif payment.status == 'approved' %}bg-success{% elif payment.status == 'rejected' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                            {{ payment.get_status_display }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <p class="mb-1"><strong>Amount:</strong> ${{ payment.amount }}</p>
+                                        <p class="mb-1"><strong>Method:</strong> {{ payment.payment_method.get_name_display }}</p>
+                                        <p class="mb-1"><strong>Date:</strong> {{ payment.created_at|date:"M d, Y" }}</p>
+                                        {% if payment.transaction_id %}
+                                            <p class="mb-1"><strong>Transaction ID:</strong> {{ payment.transaction_id }}</p>
+                                        {% endif %}
+                                        {% if payment.reference_number %}
+                                            <p class="mb-1"><strong>Reference:</strong> {{ payment.reference_number }}</p>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    {% if payment.student_notes %}
+                                        <div class="mb-3">
+                                            <small class="text-muted">Your Notes:</small>
+                                            <p class="mb-0 small">{{ payment.student_notes|truncatechars:100 }}</p>
+                                        </div>
+                                    {% endif %}
+                                    
+                                    {% if payment.admin_notes %}
+                                        <div class="mb-3">
+                                            <small class="text-muted">Admin Notes:</small>
+                                            <p class="mb-0 small">{{ payment.admin_notes|truncatechars:100 }}</p>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="card-footer bg-transparent">
+                                    <div class="d-flex justify-content-between">
+                                        <a href="{% url 'payment_system:payment_detail' payment.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye me-1"></i>View Details
+                                        </a>
+                                        {% if payment.status == 'approved' %}
+                                            <a href="{% url 'courses:course_learn' payment.course.slug %}" class="btn btn-sm btn-success">
+                                                <i class="fas fa-play me-1"></i>Start Learning
+                                            </a>
+                                        {% elif payment.status == 'rejected' %}
+                                            <a href="{% url 'payment_system:payment_page' payment.course.slug %}" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-redo me-1"></i>Try Again
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                    <nav aria-label="Payment pagination" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                                </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <div class="mb-4">
+                        <i class="fas fa-credit-card text-muted" style="font-size: 4rem;"></i>
+                    </div>
+                    <h4 class="text-muted mb-3">No Payments Found</h4>
+                    <p class="text-muted mb-4">You haven't made any payments yet. Browse our courses and start your learning journey!</p>
+                    <a href="{% url 'courses:course_list' %}" class="btn btn-primary">
+                        <i class="fas fa-search me-2"></i>Browse Courses
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

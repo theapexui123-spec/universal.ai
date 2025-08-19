@@ -20,8 +20,8 @@
                     <form method="get" class="row g-3">
                         <div class="col-md-4">
                             <label for="search" class="form-label">Search Courses</label>
-                            <input type="text" class="form-control" id="search" name="search" 
-                                   value="{{ request.GET.search }}" placeholder="Search by title or description...">
+                            <input type="text" class="form-control" id="search" name="q" 
+                                   value="{{ request.GET.q }}" placeholder="Search by title or description...">
                         </div>
                         <div class="col-md-2">
                             <label for="category" class="form-label">Category</label>
@@ -80,8 +80,8 @@
     <div class="row mb-4">
         <div class="col-12">
             <p class="text-muted">
-                Showing {{ courses|length }} course{{ courses|length|pluralize }}
-                {% if request.GET.search or request.GET.category or request.GET.difficulty or request.GET.price %}
+                Showing {{ page_obj|length }} course{{ page_obj|length|pluralize }}
+                {% if request.GET.q or request.GET.category or request.GET.difficulty or request.GET.price %}
                     with applied filters
                 {% endif %}
             </p>
@@ -90,7 +90,7 @@
 
     <!-- Courses Grid -->
     <div class="row">
-        {% for course in courses %}
+        {% for course in page_obj %}
         <div class="col-lg-4 col-md-6 mb-4">
             <div class="card course-card h-100">
                 {% if course.thumbnail %}
@@ -170,34 +170,34 @@
     </div>
 
     <!-- Pagination -->
-    {% if courses.has_other_pages %}
+    {% if page_obj.has_other_pages %}
     <div class="row">
         <div class="col-12">
             <nav aria-label="Course pagination">
                 <ul class="pagination justify-content-center">
-                    {% if courses.has_previous %}
+                    {% if page_obj.has_previous %}
                         <li class="page-item">
-                            <a class="page-link" href="?page={{ courses.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.difficulty %}&difficulty={{ request.GET.difficulty }}{% endif %}{% if request.GET.price %}&price={{ request.GET.price }}{% endif %}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}">
                                 <i class="fas fa-chevron-left"></i>
                             </a>
                         </li>
                     {% endif %}
-
-                    {% for num in courses.paginator.page_range %}
-                        {% if courses.number == num %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
                             <li class="page-item active">
                                 <span class="page-link">{{ num }}</span>
                             </li>
-                        {% elif num > courses.number|add:'-3' and num < courses.number|add:'3' %}
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
                             <li class="page-item">
-                                <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                                <a class="page-link" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.difficulty %}&difficulty={{ request.GET.difficulty }}{% endif %}{% if request.GET.price %}&price={{ request.GET.price }}{% endif %}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}">{{ num }}</a>
                             </li>
                         {% endif %}
                     {% endfor %}
-
-                    {% if courses.has_next %}
+                    
+                    {% if page_obj.has_next %}
                         <li class="page-item">
-                            <a class="page-link" href="?page={{ courses.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.difficulty %}&difficulty={{ request.GET.difficulty }}{% endif %}{% if request.GET.price %}&price={{ request.GET.price }}{% endif %}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}">
                                 <i class="fas fa-chevron-right"></i>
                             </a>
                         </li>

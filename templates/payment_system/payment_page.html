@@ -102,12 +102,16 @@
                                 <!-- Payment Screenshot -->
                                 <div class="mb-4">
                                     <h6 class="mb-3">Payment Screenshot</h6>
+                                    <div class="alert alert-info mb-3">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        <strong>Optional:</strong> You can upload your payment screenshot now or later from the payment details page.
+                                    </div>
                                     <div class="mb-3">
-                                        <label for="payment_screenshot" class="form-label">Upload Payment Screenshot *</label>
+                                        <label for="payment_screenshot" class="form-label">Upload Payment Screenshot (Optional)</label>
                                         <input type="file" class="form-control" id="payment_screenshot" 
-                                               name="payment_screenshot" accept="image/*" required>
+                                               name="payment_screenshot" accept="image/*">
                                         <div class="form-text">
-                                            Please upload a clear screenshot of your payment confirmation.
+                                            Please upload a clear screenshot of your payment confirmation. You can also upload this later.
                                         </div>
                                     </div>
                                 </div>
@@ -166,8 +170,8 @@
                                         <ol class="mb-0 mt-2">
                                             <li>Select payment method</li>
                                             <li>Make payment to the provided account</li>
-                                            <li>Upload payment screenshot</li>
-                                            <li>Wait for admin approval (24-48 hours)</li>
+                                            <li>Upload payment screenshot (now or later)</li>
+                                            <li>Wait for admin approval ({{ payment_settings.payment_processing_time }})</li>
                                         </ol>
                                     </div>
                                 </div>
@@ -184,13 +188,18 @@
                                     </p>
                                     <div class="small">
                                         <div class="mb-1">
-                                            <i class="fas fa-envelope me-1"></i>support@aicourseplatform.com
+                                            <i class="fas fa-envelope me-1"></i>{{ payment_settings.platform_email }}
                                         </div>
                                         <div class="mb-1">
-                                            <i class="fas fa-phone me-1"></i>+92 300 1234567
+                                            <i class="fas fa-phone me-1"></i>{{ payment_settings.platform_phone }}
                                         </div>
+                                        {% if payment_settings.whatsapp_number %}
+                                        <div class="mb-1">
+                                            <i class="fab fa-whatsapp me-1"></i>{{ payment_settings.whatsapp_number }}
+                                        </div>
+                                        {% endif %}
                                         <div>
-                                            <i class="fas fa-clock me-1"></i>24/7 Support
+                                            <i class="fas fa-clock me-1"></i>{{ payment_settings.support_hours }}
                                         </div>
                                     </div>
                                 </div>
@@ -203,3 +212,5 @@
     </div>
 </div>
 {% endblock %}
+
+

@@ -57,13 +57,33 @@
             <div class="card sticky-top" style="top: 20px;">
                 <div class="card-body">
                     <div class="text-center mb-3">
-                        <h3 class="text-success fw-bold">${{ course.price }}</h3>
+                        {% if course.is_free %}
+                            <h3 class="text-success fw-bold">Free</h3>
+                        {% else %}
+                            <h3 class="text-success fw-bold">${{ course.price }}</h3>
+                        {% endif %}
                     </div>
                     
                     {% if user.is_authenticated %}
-                        {% if is_enrolled %}
+                        {% if user_has_access %}
                             <a href="{% url 'courses:course_learn' course.slug %}" class="btn btn-success w-100 mb-2">
-                                <i class="fas fa-play me-2"></i>Continue Learning
+                                <i class="fas fa-play me-2"></i>Start Learning
+                            </a>
+                        {% elif payment_status == 'pending' %}
+                            <div class="alert alert-warning mb-2">
+                                <i class="fas fa-clock me-2"></i>Payment Pending
+                                <br><small>Your payment is being reviewed by admin.</small>
+                            </div>
+                            <a href="{% url 'payment_system:my_payments' %}" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="fas fa-credit-card me-2"></i>Check Payment Status
+                            </a>
+                        {% elif payment_status == 'rejected' %}
+                            <div class="alert alert-danger mb-2">
+                                <i class="fas fa-times me-2"></i>Payment Rejected
+                                <br><small>Please contact support for assistance.</small>
+                            </div>
+                            <a href="{% url 'payment_system:payment_page' course.slug %}" class="btn btn-primary w-100 mb-2">
+                                <i class="fas fa-redo me-2"></i>Try Again
                             </a>
                         {% else %}
                             <a href="{% url 'payment_system:payment_page' course.slug %}" class="btn btn-primary w-100 mb-2">
@@ -114,15 +134,46 @@
             {% endif %}
 
             <!-- Course Video -->
-            {% if course.video_intro %}
+            {% if course.course_video or course.video_intro %}
                 <div class="mb-4">
-                    <div class="ratio ratio-16x9">
-                        <iframe src="{{ course.video_intro }}" 
-                                title="Course Introduction" 
-                                frameborder="0" 
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                allowfullscreen></iframe>
-                    </div>
+                    {% if user_has_access and course.course_video %}
+                        <!-- Show uploaded course video for users with access -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-video me-2"></i>Course Introduction Video</h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <video controls class="w-100" style="border-radius: 0 0 8px 8px;">
+                                    <source src="{{ course.course_video.url }}" type="video/mp4">
+                                    Your browser does not support the video tag.
+                                </video>
+                            </div>
+                        </div>
+                    {% elif course.video_intro %}
+                        <!-- Show YouTube video for everyone -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fab fa-youtube me-2"></i>Course Preview</h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="ratio ratio-16x9">
+                                    <iframe src="{{ course.video_intro }}" 
+                                            title="Course Introduction" 
+                                            frameborder="0" 
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                            allowfullscreen></iframe>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    {% if not user_has_access and course.course_video %}
+                        <!-- Show access restriction message -->
+                        <div class="alert alert-info">
+                            <i class="fas fa-lock me-2"></i>
+                            <strong>Course Video Available!</strong> Enroll in this course to access the full introduction video.
+                        </div>
+                    {% endif %}
                 </div>
             {% endif %}
 
