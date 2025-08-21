@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Moderate Reviews{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="fas fa-shield-alt me-2"></i>Review Moderation</h2>
+            <p class="text-muted">Manage and approve pending reviews</p>
+        </div>
+        <div class="text-end">
+            <div class="h4 text-warning">{{ total_pending }}</div>
+            <small class="text-muted">Pending Reviews</small>
+        </div>
+    </div>
+
+    {% if page_obj %}
+        <!-- Review List -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Pending Reviews</h5>
+            </div>
+            <div class="card-body p-0">
+                {% for review in page_obj %}
+                    <div class="border-bottom p-4">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <!-- Review Content -->
+                                <div class="d-flex align-items-start mb-3">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <h6 class="mb-0 me-2">{{ review.student.get_full_name|default:review.student.username }}</h6>
+                                            <span class="badge bg-secondary">{{ review.student.email }}</span>
+                                        </div>
+                                        <div class="rating mb-2">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= review.rating %}
+                                                    <i class="fas fa-star text-warning"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-muted"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                            <span class="ms-2 text-muted">{{ review.get_rating_display_text }}</span>
+                                        </div>
+                                        <p class="mb-2">{{ review.comment }}</p>
+                                        <small class="text-muted">
+                                            <i class="fas fa-clock me-1"></i>Submitted on {{ review.created_at|date:"M d, Y H:i" }}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <!-- Course Info -->
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h6 class="card-title">{{ review.course.title }}</h6>
+                                        <p class="card-text small text-muted">{{ review.course.short_description|truncatewords:10 }}</p>
+                                        <div class="d-flex align-items-center">
+                                            <div class="rating small me-2">
+                                                {% for i in "12345" %}
+                                                    {% if forloop.counter <= review.course.rating %}
+                                                        <i class="fas fa-star text-warning"></i>
+                                                    {% else %}
+                                                        <i class="far fa-star text-muted"></i>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                            <small class="text-muted">({{ review.course.total_ratings }} reviews)</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="mt-3 d-flex justify-content-between align-items-center">
+                            <div>
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Review length: {{ review.comment|length }} characters
+                                </small>
+                            </div>
+                            <div>
+                                <form method="post" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="review_id" value="{{ review.id }}">
+                                    <button type="submit" name="action" value="reject" class="btn btn-outline-danger me-2">
+                                        <i class="fas fa-times me-1"></i>Reject
+                                    </button>
+                                    <button type="submit" name="action" value="approve" class="btn btn-success">
+                                        <i class="fas fa-check me-1"></i>Approve
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+            <nav aria-label="Review moderation pagination" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    {% else %}
+        <!-- No Pending Reviews -->
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-check-circle text-success mb-3" style="font-size: 4rem;"></i>
+                <h4>No Pending Reviews</h4>
+                <p class="text-muted">All reviews have been moderated. Great job!</p>
+                <a href="{% url 'courses:home' %}" class="btn btn-primary">
+                    <i class="fas fa-home me-1"></i>Go to Home
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+.rating {
+    font-size: 0.9rem;
+}
+
+.rating.small {
+    font-size: 0.8rem;
+}
+
+.card.bg-light {
+    border: 1px solid #dee2e6;
+}
+</style>
+{% endblock %}

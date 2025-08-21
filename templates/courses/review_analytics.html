@@ -1,0 +1,296 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Review Analytics - {{ course.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'courses:home' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'courses:course_list' %}">Courses</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'courses:course_detail' course.slug %}">{{ course.title }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Review Analytics</li>
+        </ol>
+    </nav>
+
+    <!-- Course Header -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    {% if course.thumbnail %}
+                        <img src="{{ course.thumbnail.url }}" class="img-fluid rounded" alt="{{ course.title }}">
+                    {% else %}
+                        <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height: 120px;">
+                            <i class="fas fa-image text-muted" style="font-size: 2rem;"></i>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="col-md-9">
+                    <h4 class="card-title">{{ course.title }}</h4>
+                    <p class="card-text text-muted">{{ course.short_description }}</p>
+                    <div class="d-flex align-items-center">
+                        <div class="rating me-3">
+                            {% if course.rating > 0 %}
+                                {% for i in "12345" %}
+                                    {% if forloop.counter <= course.rating %}
+                                        <i class="fas fa-star text-warning"></i>
+                                    {% else %}
+                                        <i class="far fa-star text-muted"></i>
+                                    {% endif %}
+                                {% endfor %}
+                                <span class="ms-2 text-muted">({{ rating_stats.total_reviews }} reviews)</span>
+                            {% else %}
+                                <span class="text-muted">No reviews yet</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Rating Statistics -->
+        <div class="col-lg-8">
+            <!-- Overall Rating -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Overall Rating</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <div class="display-4 text-warning mb-2">{{ rating_stats.average_rating|floatformat:1 }}</div>
+                            <div class="rating mb-2">
+                                {% for i in "12345" %}
+                                    {% if forloop.counter <= rating_stats.average_rating %}
+                                        <i class="fas fa-star text-warning"></i>
+                                    {% else %}
+                                        <i class="far fa-star text-muted"></i>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            <small class="text-muted">Average Rating</small>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="display-4 text-primary mb-2">{{ rating_stats.total_reviews }}</div>
+                            <small class="text-muted">Total Reviews</small>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="display-4 text-success mb-2">{{ rating_stats.verified_reviews }}</div>
+                            <small class="text-muted">Verified Reviews</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rating Distribution -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Rating Distribution</h5>
+                </div>
+                <div class="card-body">
+                                         {% for rating, data in rating_distribution_with_percentages.items %}
+                         {% if data.count > 0 %}
+                             <div class="d-flex align-items-center mb-3">
+                                 <div class="rating-label me-3" style="width: 80px;">
+                                     <div class="d-flex align-items-center">
+                                         <span class="me-2">{{ rating }}</span>
+                                         <i class="fas fa-star text-warning"></i>
+                                         {% if rating > 1 %}
+                                             <span class="ms-1">+</span>
+                                         {% endif %}
+                                     </div>
+                                 </div>
+                                 <div class="progress flex-grow-1 me-3" style="height: 20px;">
+                                     <div class="progress-bar bg-warning" role="progressbar" 
+                                          style="width: {{ data.percentage }}%" 
+                                          aria-valuenow="{{ data.percentage }}" 
+                                          aria-valuemin="0" aria-valuemax="100">
+                                         {{ data.count }}
+                                     </div>
+                                 </div>
+                                 <div class="rating-stats" style="width: 100px;">
+                                     <small class="text-muted">
+                                         {{ data.count }} ({{ data.percentage }}%)
+                                     </small>
+                                 </div>
+                             </div>
+                         {% endif %}
+                     {% endfor %}
+                </div>
+            </div>
+
+            <!-- Recent Reviews -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Recent Reviews</h5>
+                </div>
+                <div class="card-body">
+                    {% for review in recent_reviews %}
+                        <div class="border-bottom pb-3 mb-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <h6 class="mb-0 me-2">{{ review.student.get_full_name|default:review.student.username }}</h6>
+                                        {% if review.is_verified_purchase %}
+                                            <span class="badge bg-success me-1">
+                                                <i class="fas fa-check-circle me-1"></i>Verified
+                                            </span>
+                                        {% endif %}
+                                        {% if review.is_helpful %}
+                                            <span class="badge bg-info me-1">
+                                                <i class="fas fa-thumbs-up me-1"></i>Helpful
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="rating mb-1">
+                                        {% for i in "12345" %}
+                                            {% if forloop.counter <= review.rating %}
+                                                <i class="fas fa-star text-warning"></i>
+                                            {% else %}
+                                                <i class="far fa-star text-muted"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                        <span class="ms-2 text-muted">{{ review.get_rating_display_text }}</span>
+                                    </div>
+                                </div>
+                                <small class="text-muted">{{ review.created_at|date:"M d, Y" }}</small>
+                            </div>
+                            <p class="mb-0">{{ review.comment|truncatewords:30 }}</p>
+                        </div>
+                    {% empty %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-comments mb-3" style="font-size: 3rem;"></i>
+                            <h6>No reviews yet</h6>
+                            <p>Be the first to review this course!</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Stats -->
+        <div class="col-lg-4">
+            <!-- Quick Stats -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Quick Stats</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <div class="h4 text-primary">{{ rating_stats.helpful_reviews }}</div>
+                            <small class="text-muted">Helpful Reviews</small>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="h4 text-success">
+                                {% if rating_stats.total_reviews > 0 %}
+                                    {{ rating_stats.verified_reviews|floatformat:0 }}%
+                                {% else %}
+                                    0%
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">Verified Rate</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rating Breakdown -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-star me-2"></i>Rating Breakdown</h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <div class="display-6 text-warning">{{ rating_stats.average_rating|floatformat:1 }}</div>
+                        <div class="rating">
+                            {% for i in "12345" %}
+                                {% if forloop.counter <= rating_stats.average_rating %}
+                                    <i class="fas fa-star text-warning"></i>
+                                {% else %}
+                                    <i class="far fa-star text-muted"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        <small class="text-muted">out of 5 stars</small>
+                    </div>
+                    
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="h5 text-success">
+                                {% if rating_distribution.5 %}
+                                    {{ rating_distribution.5 }}
+                                {% else %}
+                                    0
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">5★</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="h5 text-info">
+                                {% if rating_distribution.4 %}
+                                    {{ rating_distribution.4 }}
+                                {% else %}
+                                    0
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">4★</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="h5 text-warning">
+                                {% if rating_distribution.3 %}
+                                    {{ rating_distribution.3 }}
+                                {% else %}
+                                    0
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">3★</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-cog me-2"></i>Actions</h6>
+                </div>
+                <div class="card-body">
+                    <a href="{% url 'courses:course_detail' course.slug %}" class="btn btn-outline-primary w-100 mb-2">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Course
+                    </a>
+                    {% if user.is_authenticated and user_has_access %}
+                        <a href="{% url 'courses:add_review' course.slug %}" class="btn btn-primary w-100">
+                            <i class="fas fa-star me-1"></i>Write Review
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.rating-label {
+    font-weight: 500;
+}
+
+.progress {
+    background-color: #f8f9fa;
+}
+
+.progress-bar {
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.rating-stats {
+    text-align: right;
+}
+</style>
+{% endblock %}

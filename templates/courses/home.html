@@ -61,25 +61,50 @@
                     {% endif %}
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <span class="badge bg-primary difficulty-badge">{{ course.get_difficulty_display }}</span>
-                            <span class="price">${{ course.price }}</span>
+                            <div>
+                                <span class="badge bg-primary difficulty-badge">{{ course.get_difficulty_display }}</span>
+                                {% if course.created_at|date:"Y-m-d" >= "2024-01-01" %}
+                                    <span class="badge bg-success ms-1">New</span>
+                                {% endif %}
+                            </div>
+                            <div class="text-end">
+                                {% if course.price == 0 %}
+                                    <span class="price text-success fw-bold">Free</span>
+                                {% else %}
+                                    <span class="price">PKR {{ course.price }}</span>
+                                {% endif %}
+                            </div>
                         </div>
                         <h5 class="card-title">{{ course.title }}</h5>
                         <p class="card-text text-muted">{{ course.short_description|truncatewords:15 }}</p>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
                             <div class="rating">
-                                {% for i in "12345" %}
-                                    {% if forloop.counter <= course.rating %}
-                                        <i class="fas fa-star"></i>
-                                    {% else %}
-                                        <i class="far fa-star"></i>
-                                    {% endif %}
-                                {% endfor %}
-                                <span class="ms-1 text-muted">({{ course.total_ratings }})</span>
+                                {% if course.rating > 0 %}
+                                    {% for i in "12345" %}
+                                        {% if forloop.counter <= course.rating %}
+                                            <i class="fas fa-star text-warning"></i>
+                                        {% elif forloop.counter <= course.rating|add:0.5 %}
+                                            <i class="fas fa-star-half-alt text-warning"></i>
+                                        {% else %}
+                                            <i class="far fa-star text-muted"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                    <span class="ms-1 text-muted">({{ course.total_ratings }} review{{ course.total_ratings|pluralize }})</span>
+                                {% else %}
+                                    <span class="text-muted">No ratings yet</span>
+                                {% endif %}
                             </div>
                             <div class="stats">
-                                <i class="fas fa-users me-1"></i>{{ course.students_enrolled }}
+                                <i class="fas fa-users me-1"></i>{{ course.students_enrolled }} student{{ course.students_enrolled|pluralize }}
                             </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>{{ course.duration }}
+                            </small>
+                            <small class="text-muted">
+                                <i class="fas fa-play-circle me-1"></i>{{ course.lessons.count }} lesson{{ course.lessons.count|pluralize }}
+                            </small>
                         </div>
                         <a href="{% url 'courses:course_detail' course.slug %}" class="btn btn-primary w-100">View Course</a>
                     </div>
@@ -121,25 +146,50 @@
                     {% endif %}
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <span class="badge bg-success difficulty-badge">{{ course.get_difficulty_display }}</span>
-                            <span class="price">${{ course.price }}</span>
+                            <div>
+                                <span class="badge bg-success difficulty-badge">{{ course.get_difficulty_display }}</span>
+                                {% if course.created_at|date:"Y-m-d" >= "2024-01-01" %}
+                                    <span class="badge bg-success ms-1">New</span>
+                                {% endif %}
+                            </div>
+                            <div class="text-end">
+                                {% if course.price == 0 %}
+                                    <span class="price text-success fw-bold">Free</span>
+                                {% else %}
+                                    <span class="price">PKR {{ course.price }}</span>
+                                {% endif %}
+                            </div>
                         </div>
                         <h5 class="card-title">{{ course.title }}</h5>
                         <p class="card-text text-muted">{{ course.short_description|truncatewords:15 }}</p>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
                             <div class="rating">
-                                {% for i in "12345" %}
-                                    {% if forloop.counter <= course.rating %}
-                                        <i class="fas fa-star"></i>
-                                    {% else %}
-                                        <i class="far fa-star"></i>
-                                    {% endif %}
-                                {% endfor %}
-                                <span class="ms-1 text-muted">({{ course.total_ratings }})</span>
+                                {% if course.rating > 0 %}
+                                    {% for i in "12345" %}
+                                        {% if forloop.counter <= course.rating %}
+                                            <i class="fas fa-star text-warning"></i>
+                                        {% elif forloop.counter <= course.rating|add:0.5 %}
+                                            <i class="fas fa-star-half-alt text-warning"></i>
+                                        {% else %}
+                                            <i class="far fa-star text-muted"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                    <span class="ms-1 text-muted">({{ course.total_ratings }} review{{ course.total_ratings|pluralize }})</span>
+                                {% else %}
+                                    <span class="text-muted">No ratings yet</span>
+                                {% endif %}
                             </div>
                             <div class="stats">
-                                <i class="fas fa-clock me-1"></i>{{ course.duration }}
+                                <i class="fas fa-users me-1"></i>{{ course.students_enrolled }} student{{ course.students_enrolled|pluralize }}
                             </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>{{ course.duration }}
+                            </small>
+                            <small class="text-muted">
+                                <i class="fas fa-play-circle me-1"></i>{{ course.lessons.count }} lesson{{ course.lessons.count|pluralize }}
+                            </small>
                         </div>
                         <a href="{% url 'courses:course_detail' course.slug %}" class="btn btn-primary w-100">View Course</a>
                     </div>

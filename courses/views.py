@@ -1,12 +1,14 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Q, Avg
+from django.db.models import Q, Avg, Count
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.utils import timezone
+from django.contrib.admin.views.decorators import staff_member_required
 from .models import Course, Category, Enrollment, Review, CourseProgress, Lesson
+from .forms import ReviewForm, ReviewFilterForm, CourseRatingForm
 from payment_system.models import Payment, PaymentMethod, PaymentSettings
 
 def home(request):
@@ -111,8 +113,54 @@ def course_detail(request, slug):
     # Get lessons
     lessons = course.lessons.all()
     
-    # Get reviews
-    reviews = course.reviews.all().order_by('-created_at')[:5]
+    # Get reviews with filtering
+    review_filter_form = ReviewFilterForm(request.GET)
+    reviews = course.reviews.filter(is_moderated=True)
+    
+    # Apply filters
+    if review_filter_form.is_valid():
+        rating = review_filter_form.cleaned_data.get('rating')
+        sort_by = review_filter_form.cleaned_data.get('sort_by', 'newest')
+        verified_only = review_filter_form.cleaned_data.get('verified_only')
+        helpful_only = review_filter_form.cleaned_data.get('helpful_only')
+        
+        if rating:
+            reviews = reviews.filter(rating=rating)
+        if verified_only:
+            reviews = reviews.filter(is_verified_purchase=True)
+        if helpful_only:
+            reviews = reviews.filter(is_helpful=True)
+        
+        # Apply sorting
+        if sort_by == 'oldest':
+            reviews = reviews.order_by('created_at')
+        elif sort_by == 'highest':
+            reviews = reviews.order_by('-rating', '-created_at')
+        elif sort_by == 'lowest':
+            reviews = reviews.order_by('rating', '-created_at')
+        elif sort_by == 'helpful':
+            reviews = reviews.order_by('-helpful_count', '-created_at')
+        else:  # newest
+            reviews = reviews.order_by('-created_at')
+    
+    # Paginate reviews
+    review_paginator = Paginator(reviews, 10)
+    review_page = request.GET.get('review_page')
+    review_page_obj = review_paginator.get_page(review_page)
+    
+    # Get rating statistics
+    rating_form = CourseRatingForm(course)
+    rating_stats = rating_form.get_rating_stats()
+    
+    # Calculate rating distribution with percentages for template
+    rating_distribution_with_percentages = {}
+    for rating in range(1, 6):
+        count = rating_stats['rating_distribution'].get(rating, 0)
+        percentage = course.get_rating_percentage(rating)
+        rating_distribution_with_percentages[rating] = {
+            'count': count,
+            'percentage': percentage
+        }
     
     # Get related courses
     related_courses = Course.objects.filter(
@@ -126,7 +174,10 @@ def course_detail(request, slug):
     context = {
         'course': course,
         'lessons': lessons,
-        'reviews': reviews,
+        'reviews': review_page_obj,
+        'review_filter_form': review_filter_form,
+        'rating_stats': rating_stats,
+        'rating_distribution_with_percentages': rating_distribution_with_percentages,
         'related_courses': related_courses,
         'user_has_access': user_has_access,
         'is_enrolled': is_enrolled,
@@ -349,35 +400,51 @@ def my_courses(request):
 @login_required
 def add_review(request, slug):
     """Add a review for a course"""
+    course = get_object_or_404(Course, slug=slug, is_published=True)
+    
+    # Check if user is enrolled or has access
+    if not course.user_has_access(request.user):
+        messages.error(request, 'You need to enroll in this course to leave a review.')
+        return redirect('courses:course_detail', slug=slug)
+    
+    # Check if user has already reviewed
+    existing_review = Review.objects.filter(student=request.user, course=course).first()
+    
     if request.method == 'POST':
-        course = get_object_or_404(Course, slug=slug)
-        rating = request.POST.get('rating')
-        comment = request.POST.get('comment')
+        form = ReviewForm(request.POST, user=request.user, course=course, instance=existing_review)
         
-        if rating and comment:
-            # Check if user has already reviewed
-            review, created = Review.objects.get_or_create(
+        if form.is_valid():
+            review = form.save(commit=False)
+            review.student = request.user
+            review.course = course
+            
+            # Check if this is a verified purchase
+            from payment_system.models import Payment
+            review.is_verified_purchase = Payment.objects.filter(
                 student=request.user,
                 course=course,
-                defaults={'rating': rating, 'comment': comment}
-            )
+                status='approved'
+            ).exists()
             
-            if not created:
-                review.rating = rating
-                review.comment = comment
-                review.save()
+            review.save()
             
-            # Update course rating
-            avg_rating = course.reviews.aggregate(Avg('rating'))['rating__avg']
-            course.rating = avg_rating or 0
-            course.total_ratings = course.reviews.count()
-            course.save()
+            if existing_review:
+                messages.success(request, 'Your review has been updated successfully!')
+            else:
+                messages.success(request, 'Thank you for your review!')
             
-            messages.success(request, 'Review submitted successfully!')
+            return redirect('courses:course_detail', slug=slug)
         else:
-            messages.error(request, 'Please provide both rating and comment.')
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = ReviewForm(user=request.user, course=course, instance=existing_review)
     
-    return redirect('course_detail', slug=slug)
+    context = {
+        'form': form,
+        'course': course,
+        'existing_review': existing_review,
+    }
+    return render(request, 'courses/add_review.html', context)
 
 def category_courses(request, category_id):
     """Courses by category"""
@@ -394,3 +461,131 @@ def category_courses(request, category_id):
         'page_obj': page_obj,
     }
     return render(request, 'courses/category_courses.html', context)
+
+@login_required
+@require_POST
+def mark_review_helpful(request, review_id):
+    """Mark a review as helpful"""
+    review = get_object_or_404(Review, id=review_id, is_moderated=True)
+    
+    # Check if user has already marked this review as helpful
+    if request.user in review.helpful_votes.all():
+        review.helpful_votes.remove(request.user)
+        review.helpful_count = review.helpful_votes.count()
+        review.save()
+        return JsonResponse({'success': True, 'helpful': False, 'count': review.helpful_count})
+    else:
+        review.helpful_votes.add(request.user)
+        review.helpful_count = review.helpful_votes.count()
+        review.save()
+        return JsonResponse({'success': True, 'helpful': True, 'count': review.helpful_count})
+
+@login_required
+def edit_review(request, review_id):
+    """Edit user's own review"""
+    review = get_object_or_404(Review, id=review_id, student=request.user)
+    
+    if request.method == 'POST':
+        form = ReviewForm(request.POST, user=request.user, course=review.course, instance=review)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Your review has been updated successfully!')
+            return redirect('courses:course_detail', slug=review.course.slug)
+    else:
+        form = ReviewForm(user=request.user, course=review.course, instance=review)
+    
+    context = {
+        'form': form,
+        'review': review,
+        'course': review.course,
+    }
+    return render(request, 'courses/edit_review.html', context)
+
+@login_required
+def delete_review(request, review_id):
+    """Delete user's own review"""
+    review = get_object_or_404(Review, id=review_id, student=request.user)
+    course_slug = review.course.slug
+    
+    if request.method == 'POST':
+        review.delete()
+        messages.success(request, 'Your review has been deleted successfully!')
+        return redirect('courses:course_detail', slug=course_slug)
+    
+    context = {
+        'review': review,
+        'course': review.course,
+    }
+    return render(request, 'courses/delete_review.html', context)
+
+@staff_member_required
+def moderate_reviews(request):
+    """Admin view to moderate reviews"""
+    reviews = Review.objects.filter(is_moderated=False).order_by('-created_at')
+    
+    if request.method == 'POST':
+        review_id = request.POST.get('review_id')
+        action = request.POST.get('action')
+        
+        if review_id and action:
+            review = get_object_or_404(Review, id=review_id)
+            
+            if action == 'approve':
+                review.is_moderated = True
+                review.moderated_by = request.user
+                review.moderated_at = timezone.now()
+                review.save()
+                messages.success(request, f'Review by {review.student.username} has been approved.')
+            elif action == 'reject':
+                review.delete()
+                messages.success(request, f'Review by {review.student.username} has been rejected.')
+    
+    # Pagination
+    paginator = Paginator(reviews, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'total_pending': reviews.count(),
+    }
+    return render(request, 'courses/moderate_reviews.html', context)
+
+def review_analytics(request, slug):
+    """Review analytics for a course"""
+    course = get_object_or_404(Course, slug=slug, is_published=True)
+    
+    # Get rating statistics
+    rating_form = CourseRatingForm(course)
+    rating_stats = rating_form.get_rating_stats()
+    
+    # Get recent reviews
+    recent_reviews = course.get_recent_reviews(10)
+    
+    # Get rating distribution
+    rating_distribution = course.get_rating_distribution()
+    
+    # Calculate rating distribution with percentages for template
+    rating_distribution_with_percentages = {}
+    for rating in range(1, 6):
+        count = rating_distribution.get(rating, 0)
+        percentage = course.get_rating_percentage(rating)
+        rating_distribution_with_percentages[rating] = {
+            'count': count,
+            'percentage': percentage
+        }
+    
+    # Check user access for template
+    user_has_access = False
+    if request.user.is_authenticated:
+        user_has_access = course.user_has_access(request.user)
+    
+    context = {
+        'course': course,
+        'rating_stats': rating_stats,
+        'recent_reviews': recent_reviews,
+        'rating_distribution': rating_distribution,
+        'rating_distribution_with_percentages': rating_distribution_with_percentages,
+        'user_has_access': user_has_access,
+    }
+    return render(request, 'courses/review_analytics.html', context)

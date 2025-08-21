@@ -31,7 +31,7 @@
                                 </div>
                                 <div class="card-body">
                                     <div class="mb-3">
-                                        <p class="mb-1"><strong>Amount:</strong> ${{ payment.amount }}</p>
+                                        <p class="mb-1"><strong>Amount:</strong> PKR {{ payment.amount }}</p>
                                         <p class="mb-1"><strong>Method:</strong> {{ payment.payment_method.get_name_display }}</p>
                                         <p class="mb-1"><strong>Date:</strong> {{ payment.created_at|date:"M d, Y" }}</p>
                                         {% if payment.transaction_id %}

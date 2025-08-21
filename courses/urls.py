@@ -14,4 +14,11 @@ urlpatterns = [
     path('my-courses/', views.my_courses, name='my_courses'),
     path('course/<slug:slug>/review/', views.add_review, name='add_review'),
     path('category/<int:category_id>/', views.category_courses, name='category_courses'),
+    
+    # Review-related URLs
+    path('review/<int:review_id>/helpful/', views.mark_review_helpful, name='mark_review_helpful'),
+    path('review/<int:review_id>/edit/', views.edit_review, name='edit_review'),
+    path('review/<int:review_id>/delete/', views.delete_review, name='delete_review'),
+    path('course/<slug:slug>/analytics/', views.review_analytics, name='review_analytics'),
+    path('admin/moderate-reviews/', views.moderate_reviews, name='moderate_reviews'),
 ]

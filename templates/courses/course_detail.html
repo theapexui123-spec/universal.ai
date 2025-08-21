@@ -21,14 +21,20 @@
             
             <div class="d-flex align-items-center mb-4">
                 <div class="rating me-3">
-                    {% for i in "12345" %}
-                        {% if forloop.counter <= course.rating %}
-                            <i class="fas fa-star text-warning"></i>
-                        {% else %}
-                            <i class="far fa-star text-warning"></i>
-                        {% endif %}
-                    {% endfor %}
-                    <span class="ms-2 text-muted">({{ course.total_ratings }} reviews)</span>
+                    {% if course.rating > 0 %}
+                        {% for i in "12345" %}
+                            {% if forloop.counter <= course.rating %}
+                                <i class="fas fa-star text-warning"></i>
+                            {% elif forloop.counter <= course.rating|add:0.5 %}
+                                <i class="fas fa-star-half-alt text-warning"></i>
+                            {% else %}
+                                <i class="far fa-star text-muted"></i>
+                            {% endif %}
+                        {% endfor %}
+                        <span class="ms-2 text-muted">({{ course.total_ratings }} review{{ course.total_ratings|pluralize }})</span>
+                    {% else %}
+                        <span class="text-muted">No ratings yet</span>
+                    {% endif %}
                 </div>
                 <span class="badge bg-primary me-2">{{ course.get_difficulty_display }}</span>
                 <span class="text-muted"><i class="fas fa-users me-1"></i>{{ course.students_enrolled }} students enrolled</span>
@@ -45,11 +51,44 @@
                     <span class="text-muted">Duration:</span>
                     <strong>{{ course.duration }}</strong>
                 </div>
+                <div class="me-4">
+                    <i class="fas fa-play-circle text-primary me-2"></i>
+                    <span class="text-muted">Lessons:</span>
+                    <strong>{{ course.lessons.count }} lesson{{ course.lessons.count|pluralize }}</strong>
+                </div>
                 <div>
                     <i class="fas fa-globe text-primary me-2"></i>
                     <span class="text-muted">Language:</span>
                     <strong>{{ course.language }}</strong>
                 </div>
+            </div>
+            
+            <!-- Additional Course Stats -->
+            <div class="d-flex align-items-center mb-4">
+                <div class="me-4">
+                    <i class="fas fa-calendar text-primary me-2"></i>
+                    <span class="text-muted">Created:</span>
+                    <strong>{{ course.created_at|date:"M Y" }}</strong>
+                </div>
+                <div class="me-4">
+                    <i class="fas fa-users text-primary me-2"></i>
+                    <span class="text-muted">Enrolled:</span>
+                    <strong>{{ course.students_enrolled }} student{{ course.students_enrolled|pluralize }}</strong>
+                </div>
+                {% if course.is_featured %}
+                <div class="me-4">
+                    <span class="badge bg-warning text-dark">
+                        <i class="fas fa-star me-1"></i>Featured Course
+                    </span>
+                </div>
+                {% endif %}
+                {% if course.created_at|date:"Y-m-d" >= "2024-01-01" %}
+                <div>
+                    <span class="badge bg-success">
+                        <i class="fas fa-newspaper me-1"></i>New Course
+                    </span>
+                </div>
+                {% endif %}
             </div>
         </div>
         
@@ -60,7 +99,7 @@
                         {% if course.is_free %}
                             <h3 class="text-success fw-bold">Free</h3>
                         {% else %}
-                            <h3 class="text-success fw-bold">${{ course.price }}</h3>
+                            <h3 class="text-success fw-bold">PKR {{ course.price }}</h3>
                         {% endif %}
                     </div>
                     
@@ -100,6 +139,32 @@
                         <small class="text-muted">
                             <i class="fas fa-shield-alt me-1"></i>30-Day Money-Back Guarantee
                         </small>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Course Stats -->
+                    <div class="mb-3">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="mb-2">
+                                    <i class="fas fa-play-circle text-primary" style="font-size: 1.5rem;"></i>
+                                </div>
+                                <small class="text-muted">{{ course.lessons.count }} Lessons</small>
+                            </div>
+                            <div class="col-4">
+                                <div class="mb-2">
+                                    <i class="fas fa-users text-primary" style="font-size: 1.5rem;"></i>
+                                </div>
+                                <small class="text-muted">{{ course.students_enrolled }} Students</small>
+                            </div>
+                            <div class="col-4">
+                                <div class="mb-2">
+                                    <i class="fas fa-star text-primary" style="font-size: 1.5rem;"></i>
+                                </div>
+                                <small class="text-muted">{{ course.rating|floatformat:1 }}/5</small>
+                            </div>
+                        </div>
                     </div>
                     
                     <hr>
@@ -225,15 +290,75 @@
 
             <!-- Course Curriculum -->
             <div class="card mb-4">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="fas fa-book me-2"></i>Course Curriculum</h5>
+                    <div class="text-muted">
+                        <small>
+                            <i class="fas fa-clock me-1"></i>
+                            {% with total_duration=course.lessons.all|length %}
+                                {% if total_duration > 0 %}
+                                    {{ course.lessons.all|length }} lesson{{ course.lessons.all|length|pluralize }} • 
+                                    {% with total_minutes=course.lessons.all|length %}
+                                        {% for lesson in course.lessons.all %}
+                                            {% if forloop.first %}
+                                                {% with total=lesson.duration %}
+                                                    {% for l in course.lessons.all %}
+                                                        {% if not forloop.first %}
+                                                            {% with total=total|add:l.duration %}{% endwith %}
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                    {{ total }} min total
+                                                {% endwith %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endwith %}
+                                {% else %}
+                                    No lessons yet
+                                {% endif %}
+                            {% endwith %}
+                        </small>
+                    </div>
                 </div>
                 <div class="card-body p-0">
+                    {% if user.is_authenticated and user_has_access %}
+                        <!-- Progress for enrolled users -->
+                        <div class="p-3 bg-light border-bottom">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <small class="text-muted">Your Progress</small>
+                                <small class="text-muted">
+                                    {% with completed_lessons=course.lessons.count %}
+                                        {% with total_lessons=course.lessons.count %}
+                                            {% if total_lessons > 0 %}
+                                                {% with progress_percentage=completed_lessons|floatformat:0 %}
+                                                    {{ progress_percentage }}% Complete
+                                                {% endwith %}
+                                            {% endif %}
+                                        {% endwith %}
+                                    {% endwith %}
+                                </small>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar bg-success" role="progressbar" 
+                                     style="width: 0%" 
+                                     aria-valuenow="0" 
+                                     aria-valuemin="0" aria-valuemax="100">
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                    
                     <div class="list-group list-group-flush">
                         {% for lesson in course.lessons.all %}
                             <div class="list-group-item d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="mb-1">{{ lesson.title }}</h6>
+                                    <h6 class="mb-1">
+                                        {% if user.is_authenticated and user_has_access %}
+                                            <i class="fas fa-play-circle text-success me-2"></i>
+                                        {% else %}
+                                            <i class="fas fa-circle text-muted me-2"></i>
+                                        {% endif %}
+                                        {{ lesson.title }}
+                                    </h6>
                                     {% if lesson.description %}
                                         <small class="text-muted">{{ lesson.description|truncatewords:20 }}</small>
                                     {% endif %}
@@ -256,33 +381,148 @@
 
             <!-- Reviews -->
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-star me-2"></i>Student Reviews</h5>
-                    {% if user.is_authenticated and is_enrolled %}
-                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#reviewModal">
-                            <i class="fas fa-plus me-1"></i>Write Review
-                        </button>
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h5 class="mb-0"><i class="fas fa-star me-2"></i>Student Reviews</h5>
+                            <small class="text-muted">
+                                {% if rating_stats.total_reviews > 0 %}
+                                    {{ rating_stats.total_reviews }} review{{ rating_stats.total_reviews|pluralize }} • 
+                                    Average rating: {{ rating_stats.average_rating|floatformat:1 }}/5
+                                {% else %}
+                                    No reviews yet
+                                {% endif %}
+                            </small>
+                        </div>
+                        <div>
+                            <a href="{% url 'courses:review_analytics' course.slug %}" class="btn btn-sm btn-outline-info me-2">
+                                <i class="fas fa-chart-bar me-1"></i>Analytics
+                            </a>
+                            {% if user.is_authenticated and is_enrolled %}
+                                <a href="{% url 'courses:add_review' course.slug %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-plus me-1"></i>Write Review
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Rating Distribution -->
+                    {% if rating_stats.total_reviews > 0 %}
+                        <div class="rating-distribution mb-3">
+                            {% for rating, data in rating_distribution_with_percentages.items %}
+                                {% if data.count > 0 %}
+                                    <div class="d-flex align-items-center mb-1">
+                                        <div class="rating-label me-2" style="width: 60px;">
+                                            <small>{{ rating }} star{{ rating|pluralize }}</small>
+                                        </div>
+                                        <div class="progress flex-grow-1 me-2" style="height: 8px;">
+                                            <div class="progress-bar bg-warning" role="progressbar" 
+                                                 style="width: {{ data.percentage }}%" 
+                                                 aria-valuenow="{{ data.percentage }}" 
+                                                 aria-valuemin="0" aria-valuemax="100">
+                                            </div>
+                                        </div>
+                                        <div class="rating-count" style="width: 40px;">
+                                            <small class="text-muted">{{ data.count }}</small>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
                     {% endif %}
+                    
+                    <!-- Review Filters -->
+                    <form method="get" class="review-filters">
+                        <div class="row g-2">
+                            <div class="col-md-3">
+                                {{ review_filter_form.rating }}
+                            </div>
+                            <div class="col-md-3">
+                                {{ review_filter_form.sort_by }}
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-check">
+                                    {{ review_filter_form.verified_only }}
+                                    <label class="form-check-label" for="{{ review_filter_form.verified_only.id_for_label }}">
+                                        <small>Verified Only</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-check">
+                                    {{ review_filter_form.helpful_only }}
+                                    <label class="form-check-label" for="{{ review_filter_form.helpful_only.id_for_label }}">
+                                        <small>Helpful Only</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
                 </div>
                 <div class="card-body">
-                    {% for review in course.reviews.all %}
-                        <div class="border-bottom pb-3 mb-3">
+                    {% for review in reviews %}
+                        <div class="review-item border-bottom pb-3 mb-3">
                             <div class="d-flex justify-content-between align-items-start mb-2">
-                                <div>
-                                    <h6 class="mb-1">{{ review.student.get_full_name|default:review.student.username }}</h6>
-                                    <div class="rating">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <h6 class="mb-0 me-2">{{ review.student.get_full_name|default:review.student.username }}</h6>
+                                        {% if review.is_verified_purchase %}
+                                            <span class="badge bg-success me-1">
+                                                <i class="fas fa-check-circle me-1"></i>Verified Purchase
+                                            </span>
+                                        {% endif %}
+                                        {% if review.is_helpful %}
+                                            <span class="badge bg-info me-1">
+                                                <i class="fas fa-thumbs-up me-1"></i>Helpful
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="rating mb-1">
                                         {% for i in "12345" %}
                                             {% if forloop.counter <= review.rating %}
                                                 <i class="fas fa-star text-warning"></i>
                                             {% else %}
-                                                <i class="far fa-star text-warning"></i>
+                                                <i class="far fa-star text-muted"></i>
                                             {% endif %}
                                         {% endfor %}
+                                        <span class="ms-2 text-muted">{{ review.get_rating_display_text }}</span>
                                     </div>
                                 </div>
-                                <small class="text-muted">{{ review.created_at|date:"M d, Y" }}</small>
+                                <div class="text-end">
+                                    <small class="text-muted d-block">{{ review.created_at|date:"M d, Y" }}</small>
+                                    {% if user == review.student %}
+                                        <div class="mt-1">
+                                            <a href="{% url 'courses:edit_review' review.id %}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'courses:delete_review' review.id %}" class="btn btn-sm btn-outline-danger">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    {% endif %}
+                                </div>
                             </div>
-                            <p class="mb-0">{{ review.comment }}</p>
+                            <p class="mb-2">{{ review.comment }}</p>
+                            
+                            <!-- Helpful Button -->
+                            {% if user.is_authenticated and user != review.student %}
+                                <div class="d-flex align-items-center">
+                                    <button class="btn btn-sm btn-outline-secondary helpful-btn me-2" 
+                                            data-review-id="{{ review.id }}"
+                                            data-helpful="{% if user in review.helpful_votes.all %}true{% else %}false{% endif %}">
+                                        <i class="fas fa-thumbs-up me-1"></i>
+                                        <span class="helpful-count">{{ review.helpful_count }}</span>
+                                        <span class="helpful-text">Helpful</span>
+                                    </button>
+                                </div>
+                            {% elif review.helpful_count > 0 %}
+                                <div class="d-flex align-items-center">
+                                    <small class="text-muted">
+                                        <i class="fas fa-thumbs-up me-1"></i>
+                                        {{ review.helpful_count }} found this helpful
+                                    </small>
+                                </div>
+                            {% endif %}
                         </div>
                     {% empty %}
                         <div class="text-center text-muted py-4">
@@ -291,6 +531,37 @@
                             <p>Be the first to review this course!</p>
                         </div>
                     {% endfor %}
+                    
+                    <!-- Review Pagination -->
+                    {% if reviews.has_other_pages %}
+                        <nav aria-label="Review pagination" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                {% if reviews.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}review_page={{ reviews.previous_page_number }}">Previous</a>
+                                    </li>
+                                {% endif %}
+                                
+                                {% for num in reviews.paginator.page_range %}
+                                    {% if reviews.number == num %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ num }}</span>
+                                        </li>
+                                    {% elif num > reviews.number|add:'-3' and num < reviews.number|add:'3' %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}review_page={{ num }}">{{ num }}</a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if reviews.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}review_page={{ reviews.next_page_number }}">Next</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -308,13 +579,56 @@
                     </div>
                     <h6>{{ course.instructor.get_full_name|default:course.instructor.username }}</h6>
                     <p class="text-muted small">{{ course.instructor.profile.bio|default:"Expert instructor with years of experience in AI and machine learning."|truncatewords:20 }}</p>
+                    
+                    <!-- Instructor Stats -->
+                    <div class="row text-center mt-3">
+                        <div class="col-4">
+                            <div class="mb-1">
+                                <i class="fas fa-book text-primary" style="font-size: 1.2rem;"></i>
+                            </div>
+                            <small class="text-muted">{{ course.instructor.courses_taught.count }} Course{{ course.instructor.courses_taught.count|pluralize }}</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="mb-1">
+                                <i class="fas fa-users text-primary" style="font-size: 1.2rem;"></i>
+                            </div>
+                            <small class="text-muted">
+                                {% with total_students=0 %}
+                                    {% for c in course.instructor.courses_taught.all %}
+                                        {% with total_students=total_students|add:c.students_enrolled %}{% endwith %}
+                                    {% endfor %}
+                                    {{ total_students }} Student{{ total_students|pluralize }}
+                                {% endwith %}
+                            </small>
+                        </div>
+                        <div class="col-4">
+                            <div class="mb-1">
+                                <i class="fas fa-star text-primary" style="font-size: 1.2rem;"></i>
+                            </div>
+                            <small class="text-muted">
+                                {% with avg_rating=0 %}
+                                    {% for c in course.instructor.courses_taught.all %}
+                                        {% if c.rating > 0 %}
+                                            {% with avg_rating=avg_rating|add:c.rating %}{% endwith %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% if course.instructor.courses_taught.count > 0 %}
+                                        {{ avg_rating|floatformat:1 }}/5
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                {% endwith %}
+                            </small>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- Related Courses -->
             <div class="card">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h6 class="mb-0"><i class="fas fa-thumbs-up me-2"></i>Related Courses</h6>
+                    <small class="text-muted">{{ related_courses.count }} course{{ related_courses.count|pluralize }}</small>
                 </div>
                 <div class="card-body">
                     {% for related_course in related_courses %}
@@ -333,15 +647,31 @@
                                     </a>
                                 </h6>
                                 <div class="rating small">
-                                    {% for i in "12345" %}
-                                        {% if forloop.counter <= related_course.rating %}
-                                            <i class="fas fa-star text-warning"></i>
-                                        {% else %}
-                                            <i class="far fa-star text-warning"></i>
-                                        {% endif %}
-                                    {% endfor %}
+                                    {% if related_course.rating > 0 %}
+                                        {% for i in "12345" %}
+                                            {% if forloop.counter <= related_course.rating %}
+                                                <i class="fas fa-star text-warning"></i>
+                                            {% else %}
+                                                <i class="far fa-star text-warning"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                        <small class="text-muted ms-1">({{ related_course.total_ratings }})</small>
+                                    {% else %}
+                                        <small class="text-muted">No ratings</small>
+                                    {% endif %}
                                 </div>
-                                <small class="text-success fw-bold">${{ related_course.price }}</small>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-success fw-bold">
+                                        {% if related_course.price == 0 %}
+                                            Free
+                                        {% else %}
+                                            PKR {{ related_course.price }}
+                                        {% endif %}
+                                    </small>
+                                    <small class="text-muted">
+                                        <i class="fas fa-users me-1"></i>{{ related_course.students_enrolled }}
+                                    </small>
+                                </div>
                             </div>
                         </div>
                     {% empty %}
@@ -353,42 +683,84 @@
     </div>
 </div>
 
-<!-- Review Modal -->
-{% if user.is_authenticated and is_enrolled %}
-<div class="modal fade" id="reviewModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Write a Review</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="post" action="{% url 'courses:add_review' course.slug %}">
-                {% csrf_token %}
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="rating" class="form-label">Rating</label>
-                        <select class="form-select" id="rating" name="rating" required>
-                            <option value="">Select rating</option>
-                            <option value="5">5 - Excellent</option>
-                            <option value="4">4 - Very Good</option>
-                            <option value="3">3 - Good</option>
-                            <option value="2">2 - Fair</option>
-                            <option value="1">1 - Poor</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="comment" class="form-label">Comment</label>
-                        <textarea class="form-control" id="comment" name="comment" rows="4" required 
-                                  placeholder="Share your experience with this course..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Submit Review</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-{% endif %}
 {% endblock %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Helpful button functionality
+    const helpfulButtons = document.querySelectorAll('.helpful-btn');
+    
+    helpfulButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const reviewId = this.dataset.reviewId;
+            const isHelpful = this.dataset.helpful === 'true';
+            
+            fetch(`/courses/review/${reviewId}/helpful/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const countSpan = this.querySelector('.helpful-count');
+                    const textSpan = this.querySelector('.helpful-text');
+                    
+                    countSpan.textContent = data.count;
+                    this.dataset.helpful = data.helpful.toString();
+                    
+                    if (data.helpful) {
+                        this.classList.add('btn-primary');
+                        this.classList.remove('btn-outline-secondary');
+                        textSpan.textContent = 'Helpful';
+                    } else {
+                        this.classList.remove('btn-primary');
+                        this.classList.add('btn-outline-secondary');
+                        textSpan.textContent = 'Helpful';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+    });
+    
+    // Auto-submit review filters
+    const filterForm = document.querySelector('.review-filters');
+    const filterInputs = filterForm.querySelectorAll('input, select');
+    
+    filterInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            filterForm.submit();
+        });
+    });
+});
+</script>
+
+<style>
+.rating-distribution .progress {
+    background-color: #f8f9fa;
+}
+
+.helpful-btn {
+    transition: all 0.2s ease;
+}
+
+.helpful-btn:hover {
+    transform: translateY(-1px);
+}
+
+.review-item {
+    transition: background-color 0.2s ease;
+}
+
+.review-item:hover {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    margin: -15px;
+}
+</style>

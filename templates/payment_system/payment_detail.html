@@ -29,7 +29,7 @@
                         <div class="col-md-6">
                             <h5 class="text-primary">Course Information</h5>
                             <p><strong>Course:</strong> {{ payment.course.title }}</p>
-                            <p><strong>Amount:</strong> ${{ payment.amount }}</p>
+                            <p><strong>Amount:</strong> PKR {{ payment.amount }}</p>
                             <p><strong>Payment Method:</strong> {{ payment.payment_method.get_name_display }}</p>
                             <p><strong>Status:</strong> 
                                 <span class="badge {% if payment.status == 'pending' %}bg-warning{% elif payment.status == 'approved' %}bg-success{% elif payment.status == 'rejected' %}bg-danger{% else %}bg-secondary{% endif %}">
