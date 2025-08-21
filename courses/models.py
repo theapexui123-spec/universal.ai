@@ -4,6 +4,7 @@ from django.utils import timezone
 from django.urls import reverse
 from django.utils.text import slugify
 from django.core.exceptions import ValidationError
+from django.db.models import Avg
 import os
 
 def validate_video_file(value):
@@ -114,6 +115,44 @@ class Course(models.Model):
         
         return self.enrollments.filter(student=user, is_active=True).exists()
     
+    def get_rating_distribution(self):
+        """Get rating distribution for analytics"""
+        from django.db.models import Count
+        distribution = self.reviews.filter(is_moderated=True).values('rating').annotate(
+            count=Count('rating')
+        ).order_by('rating')
+        
+        # Create a complete distribution (1-5 stars)
+        complete_distribution = {}
+        for i in range(1, 6):
+            complete_distribution[i] = 0
+        
+        for item in distribution:
+            complete_distribution[item['rating']] = item['count']
+        
+        return complete_distribution
+    
+    def get_rating_percentage(self, rating):
+        """Get percentage of a specific rating"""
+        total_reviews = self.reviews.filter(is_moderated=True).count()
+        if total_reviews == 0:
+            return 0
+        
+        rating_count = self.reviews.filter(is_moderated=True, rating=rating).count()
+        return round((rating_count / total_reviews) * 100, 1)
+    
+    def get_recent_reviews(self, limit=5):
+        """Get recent reviews"""
+        return self.reviews.filter(is_moderated=True).order_by('-created_at')[:limit]
+    
+    def get_verified_reviews(self):
+        """Get reviews from verified purchases"""
+        return self.reviews.filter(is_moderated=True, is_verified_purchase=True)
+    
+    def get_helpful_reviews(self):
+        """Get reviews marked as helpful"""
+        return self.reviews.filter(is_moderated=True, is_helpful=True)
+    
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.title)
@@ -199,17 +238,86 @@ class Enrollment(models.Model):
         return f"{self.student.username} - {self.course.title}"
 
 class Review(models.Model):
+    RATING_CHOICES = [
+        (1, '1 - Poor'),
+        (2, '2 - Fair'),
+        (3, '3 - Good'),
+        (4, '4 - Very Good'),
+        (5, '5 - Excellent'),
+    ]
+    
     student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='reviews')
-    rating = models.PositiveIntegerField(choices=[(i, i) for i in range(1, 6)])
+    rating = models.PositiveIntegerField(choices=RATING_CHOICES)
     comment = models.TextField()
+    
+    # Additional feedback fields
+    helpful_count = models.PositiveIntegerField(default=0)
+    helpful_votes = models.ManyToManyField(User, related_name='helpful_reviews', blank=True)
+    is_verified_purchase = models.BooleanField(default=False)
+    is_helpful = models.BooleanField(default=False)
+    is_moderated = models.BooleanField(default=True)
+    moderated_at = models.DateTimeField(blank=True, null=True)
+    moderated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='moderated_reviews')
+    
+    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         unique_together = ['student', 'course']
+        ordering = ['-created_at']
     
     def __str__(self):
         return f"{self.student.username} - {self.course.title} - {self.rating} stars"
+    
+    def get_rating_display_text(self):
+        """Get the text representation of the rating"""
+        rating_texts = {
+            1: 'Poor',
+            2: 'Fair', 
+            3: 'Good',
+            4: 'Very Good',
+            5: 'Excellent'
+        }
+        return rating_texts.get(self.rating, 'Unknown')
+    
+    def get_stars_display(self):
+        """Get HTML for star display"""
+        stars = ''
+        for i in range(1, 6):
+            if i <= self.rating:
+                stars += '<i class="fas fa-star text-warning"></i>'
+            else:
+                stars += '<i class="far fa-star text-muted"></i>'
+        return stars
+    
+    def save(self, *args, **kwargs):
+        # Check if this is a verified purchase
+        if not self.is_verified_purchase:
+            from payment_system.models import Payment
+            self.is_verified_purchase = Payment.objects.filter(
+                student=self.student,
+                course=self.course,
+                status='approved'
+            ).exists()
+        
+        super().save(*args, **kwargs)
+        
+        # Update course rating statistics
+        self.update_course_rating()
+    
+    def update_course_rating(self):
+        """Update course rating statistics"""
+        reviews = self.course.reviews.filter(is_moderated=True)
+        if reviews.exists():
+            avg_rating = reviews.aggregate(Avg('rating'))['rating__avg']
+            self.course.rating = round(avg_rating, 2)
+            self.course.total_ratings = reviews.count()
+        else:
+            self.course.rating = 0.00
+            self.course.total_ratings = 0
+        self.course.save()
 
 class CourseProgress(models.Model):
     student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='course_progress')
