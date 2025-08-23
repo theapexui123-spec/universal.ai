@@ -15,8 +15,10 @@ A comprehensive Django web application for selling and managing online courses w
 - **Lesson System**: Organize courses into lessons with video content
 - **Categories**: Categorize courses for easy discovery
 - **Difficulty Levels**: Beginner, Intermediate, and Advanced course levels
-- **Course Ratings & Reviews**: Student feedback and rating system
+- **Course Ratings & Reviews**: Student feedback and rating system with moderation
 - **Search & Filter**: Advanced course discovery with multiple filters
+- **Time-Limited Discounts**: Individual course discounts with countdown timers
+- **Global Site-Wide Discounts**: Platform-wide promotional offers with countdown banners
 
 ### 👥 User Management
 - **User Registration & Authentication**: Secure user registration and login
@@ -45,6 +47,10 @@ A comprehensive Django web application for selling and managing online courses w
 - **Font Awesome Icons**: Rich iconography throughout the application
 - **Google Fonts**: Inter font family for better readability
 - **Cross-browser Compatibility**: Works on all modern browsers
+- **Transparent Navbar**: Modern glassmorphism effect with backdrop blur
+- **Dynamic Hero Banners**: Animated carousel with multiple banner images
+- **Modern Footer**: Compact, professional footer with social media integration
+- **Dynamic Testimonials**: Real-time student reviews and feedback display
 
 ## 🛠️ Technology Stack
 
@@ -63,8 +69,10 @@ A comprehensive Django web application for selling and managing online courses w
 
 ### Additional Tools
 - **Pillow**: Image processing and manipulation
-- **Django Admin**: Powerful admin interface
+- **Django Admin**: Powerful admin interface with Jazzmin customization
 - **Virtual Environment**: Isolated Python environment
+- **Django Context Processors**: Global template variables
+- **Management Commands**: Automated data population and maintenance
 
 ## 📋 Prerequisites
 
@@ -107,6 +115,10 @@ python manage.py migrate
 ### 5. Create Sample Data
 ```bash
 python manage.py populate_sample_data
+python manage.py init_site_settings
+python manage.py add_sample_discounts
+python manage.py add_global_discount
+python manage.py approve_all_reviews
 ```
 
 ### 6. Run Development Server
@@ -141,13 +153,20 @@ ai-course-platform/
 │   ├── urls.py              # Main URL configuration
 │   └── wsgi.py              # WSGI configuration
 ├── courses/                  # Courses app
-│   ├── models.py            # Course, Lesson, Category models
+│   ├── models.py            # Course, Lesson, Category, GlobalDiscount, SiteSettings, Banner, Review models
 │   ├── views.py             # Course-related views
 │   ├── admin.py             # Django admin configuration
 │   ├── urls.py              # Course URL patterns
+│   ├── context_processors.py # Global template variables
 │   └── management/          # Custom management commands
 │       └── commands/
-│           └── populate_sample_data.py
+│           ├── populate_sample_data.py
+│           ├── init_site_settings.py
+│           ├── add_sample_discounts.py
+│           ├── add_global_discount.py
+│           ├── update_discounts.py
+│           ├── update_global_discounts.py
+│           └── approve_all_reviews.py
 ├── accounts/                 # User management app
 │   ├── models.py            # UserProfile model
 │   ├── views.py             # User-related views
@@ -180,6 +199,10 @@ ai-course-platform/
 - **Rich Content**: Support for course descriptions, requirements, and learning outcomes
 - **Video Integration**: YouTube/Vimeo video embedding support
 - **Course Analytics**: Track enrollment, completion rates, and student engagement
+- **Dynamic Pricing**: Time-limited individual course discounts with countdown timers
+- **Global Discounts**: Site-wide promotional offers with animated countdown banners
+- **Review System**: Moderated student reviews with star ratings and testimonials
+- **Dynamic Content**: Hero banners, testimonials, and site settings managed from admin
 
 ### Payment Processing
 - **Manual Payment Verification**: Admin reviews payment screenshots
@@ -190,10 +213,13 @@ ai-course-platform/
 
 ### User Experience
 - **Responsive Design**: Works on all device sizes
-- **Intuitive Navigation**: Easy-to-use interface
+- **Intuitive Navigation**: Easy-to-use interface with transparent navbar
 - **Progress Tracking**: Visual progress indicators
 - **Search & Filter**: Find courses quickly
 - **Personalized Dashboard**: Customized user experience
+- **Modern UI**: Glassmorphism effects, smooth animations, and modern styling
+- **Dynamic Content**: Real-time testimonials and promotional banners
+- **Interactive Elements**: Hover effects, countdown timers, and animated components
 
 ## 🔧 Customization
 
@@ -214,6 +240,8 @@ ai-course-platform/
 - Follow the existing app structure and patterns
 - Update URL configurations and admin interfaces
 - Add appropriate tests for new features
+- Use context processors for global template variables
+- Create management commands for data operations
 
 ## 🚀 Deployment
 
@@ -326,6 +354,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📈 Roadmap
 
 ### Upcoming Features
+- [x] **Dynamic Discounts**: Time-limited course and global discounts ✅
+- [x] **Modern UI/UX**: Transparent navbar, modern footer, dynamic content ✅
+- [x] **Review System**: Student testimonials and feedback ✅
+- [x] **Site Settings**: Dynamic logo, contact info, social media ✅
 - [ ] **Video Streaming**: Integrated video player
 - [ ] **Live Classes**: Real-time video conferencing
 - [ ] **Mobile App**: Native mobile application

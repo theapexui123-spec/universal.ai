@@ -150,19 +150,73 @@
                                     <h6 class="mb-0"><i class="fas fa-receipt me-2"></i>Payment Summary</h6>
                                 </div>
                                 <div class="card-body">
-                                    <div class="d-flex justify-content-between mb-2">
-                                        <span>Course Price:</span>
-                                        <span>PKR {{ course.price }}</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between mb-2">
-                                        <span>Processing Fee:</span>
-                                        <span>PKR 0.00</span>
-                                    </div>
-                                    <hr>
-                                    <div class="d-flex justify-content-between mb-3">
-                                        <strong>Total Amount:</strong>
-                                        <strong class="text-success">PKR {{ course.price }}</strong>
-                                    </div>
+                                    {% if course.has_active_discount %}
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Original Price:</span>
+                                            <span class="text-decoration-line-through text-muted">PKR {{ course.price }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Discount:</span>
+                                            <span class="text-danger">-{{ course.get_discount_percentage }}%</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Discounted Price:</span>
+                                            <span class="text-danger fw-bold">PKR {{ course.discount_price }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Processing Fee:</span>
+                                            <span>PKR 0.00</span>
+                                        </div>
+                                        <hr>
+                                        <div class="d-flex justify-content-between mb-3">
+                                            <strong>Total Amount:</strong>
+                                            <strong class="text-success">PKR {{ course.discount_price }}</strong>
+                                        </div>
+                                        <div class="alert alert-warning small mb-3">
+                                            <i class="fas fa-clock me-1"></i>
+                                            <strong>Limited Time Offer!</strong> This discount expires soon.
+                                        </div>
+                                    {% elif course.has_any_discount %}
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Original Price:</span>
+                                            <span class="text-decoration-line-through text-muted">PKR {{ course.price }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Global Discount:</span>
+                                            <span class="text-warning">-{{ course.get_discount_percentage }}%</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Discounted Price:</span>
+                                            <span class="text-warning fw-bold">PKR {{ course.get_current_price }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Processing Fee:</span>
+                                            <span>PKR 0.00</span>
+                                        </div>
+                                        <hr>
+                                        <div class="d-flex justify-content-between mb-3">
+                                            <strong>Total Amount:</strong>
+                                            <strong class="text-success">PKR {{ course.get_current_price }}</strong>
+                                        </div>
+                                        <div class="alert alert-info small mb-3">
+                                            <i class="fas fa-globe me-1"></i>
+                                            <strong>Global Discount Active!</strong> This discount applies to all courses.
+                                        </div>
+                                    {% else %}
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Course Price:</span>
+                                            <span>PKR {{ course.price }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Processing Fee:</span>
+                                            <span>PKR 0.00</span>
+                                        </div>
+                                        <hr>
+                                        <div class="d-flex justify-content-between mb-3">
+                                            <strong>Total Amount:</strong>
+                                            <strong class="text-success">PKR {{ course.price }}</strong>
+                                        </div>
+                                    {% endif %}
                                     
                                     <div class="alert alert-info small">
                                         <i class="fas fa-info-circle me-1"></i>

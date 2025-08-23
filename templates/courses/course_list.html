@@ -112,7 +112,31 @@
                             {% if course.price == 0 %}
                                 <span class="price text-success fw-bold">Free</span>
                             {% else %}
-                                <span class="price">PKR {{ course.price }}</span>
+                                {% if course.has_active_discount %}
+                                    <div class="discount-price-container">
+                                        <span class="price text-decoration-line-through text-muted">PKR {{ course.price }}</span>
+                                        <br>
+                                        <span class="price text-danger fw-bold">PKR {{ course.discount_price }}</span>
+                                        <br>
+                                        <span class="badge bg-danger">Save {{ course.get_discount_percentage }}%</span>
+                                        <div class="countdown-timer mt-1" data-end-time="{{ course.discount_end_date|date:'Y-m-d H:i:s' }}" data-course-id="{{ course.id }}">
+                                            <small class="text-danger">
+                                                <i class="fas fa-clock me-1"></i>
+                                                <span class="countdown-text">Loading...</span>
+                                            </small>
+                                        </div>
+                                    </div>
+                                {% elif course.has_any_discount %}
+                                    <div class="discount-price-container">
+                                        <span class="price text-decoration-line-through text-muted">PKR {{ course.price }}</span>
+                                        <br>
+                                        <span class="price text-danger fw-bold">PKR {{ course.get_current_price }}</span>
+                                        <br>
+                                        <span class="badge bg-warning text-dark">Save {{ course.get_discount_percentage }}%</span>
+                                    </div>
+                                {% else %}
+                                    <span class="price">PKR {{ course.price }}</span>
+                                {% endif %}
                             {% endif %}
                         </div>
                     </div>

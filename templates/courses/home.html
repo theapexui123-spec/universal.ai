@@ -1,15 +1,97 @@
 {% extends 'base.html' %}
 
-{% block title %}AI Course Platform - Learn AI & Machine Learning{% endblock %}
+{% block title %}{{ site_settings.site_name }} - {{ site_settings.site_tagline }}{% endblock %}
 
 {% block content %}
-<!-- Hero Section -->
+<!-- Hero Section with Dynamic Banners -->
+{% if active_banners %}
+<div id="heroCarousel" class="carousel slide hero-carousel" data-bs-ride="carousel" data-bs-interval="5000">
+    <!-- Carousel Indicators -->
+    <div class="carousel-indicators">
+        {% for banner in active_banners %}
+        <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="{{ forloop.counter0 }}" 
+                {% if forloop.first %}class="active" aria-current="true"{% endif %} 
+                aria-label="Slide {{ forloop.counter }}"></button>
+        {% endfor %}
+    </div>
+    
+    <!-- Carousel Items -->
+    <div class="carousel-inner">
+        {% for banner in active_banners %}
+        <div class="carousel-item {% if forloop.first %}active{% endif %}">
+            <div class="hero-banner" style="background-image: url('{{ banner.image.url }}');">
+                <div class="hero-overlay"></div>
+                <div class="container">
+                    <div class="row align-items-center min-vh-75">
+                        <div class="col-lg-6">
+                            <div class="hero-content {{ banner.get_animation_class }}">
+                                <h1 class="display-4 fw-bold mb-4 text-white">{{ banner.title }}</h1>
+                                {% if banner.subtitle %}
+                                    <p class="lead mb-4 text-white-50">{{ banner.subtitle }}</p>
+                                {% endif %}
+                                {% if banner.description %}
+                                    <p class="text-white-75 mb-4">{{ banner.description }}</p>
+                                {% endif %}
+                                <div class="d-flex gap-3 flex-wrap">
+                                    {% if banner.cta_text and banner.cta_url %}
+                                        <a href="{{ banner.cta_url }}" class="btn btn-{{ banner.cta_color }} btn-lg">
+                                            {{ banner.cta_text }}
+                                        </a>
+                                    {% else %}
+                                        <a href="{% url 'courses:course_list' %}" class="btn btn-light btn-lg">
+                                            <i class="fas fa-play me-2"></i>Explore Courses
+                                        </a>
+                                    {% endif %}
+                                    {% if user.is_authenticated %}
+                                        {% if user.enrollments.filter.is_active.exists %}
+                                            <a href="{% url 'courses:my_courses' %}" class="btn btn-outline-light btn-lg">
+                                                <i class="fas fa-graduation-cap me-2"></i>Continue Learning
+                                            </a>
+                                        {% else %}
+                                            <a href="{% url 'accounts:dashboard' %}" class="btn btn-outline-light btn-lg">
+                                                <i class="fas fa-tachometer-alt me-2"></i>My Dashboard
+                                            </a>
+                                        {% endif %}
+                                    {% else %}
+                                        <a href="{% url 'accounts:register' %}" class="btn btn-outline-light btn-lg">
+                                            <i class="fas fa-user-plus me-2"></i>Get Started
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6 text-center">
+                            <div class="hero-image {{ banner.get_animation_class }}" style="animation-delay: 0.5s;">
+                                <!-- Hero image content removed for cleaner design -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Carousel Controls -->
+    {% if active_banners|length > 1 %}
+    <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Previous</span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Next</span>
+    </button>
+    {% endif %}
+</div>
+{% else %}
+<!-- Fallback Hero Section -->
 <section class="hero-section">
     <div class="container">
         <div class="row align-items-center">
             <div class="col-lg-6">
-                <h1 class="display-4 fw-bold mb-4">Master AI & Machine Learning</h1>
-                <p class="lead mb-4">Unlock the power of artificial intelligence with our comprehensive courses designed by industry experts. Learn practical skills and advance your career in the AI revolution.</p>
+                <h1 class="display-4 fw-bold mb-4">{{ site_settings.site_name }}</h1>
+                <p class="lead mb-4">{{ site_settings.site_tagline }}</p>
                 <div class="d-flex gap-3">
                     <a href="{% url 'courses:course_list' %}" class="btn btn-light btn-lg">
                         <i class="fas fa-play me-2"></i>Explore Courses
@@ -32,11 +114,44 @@
                 </div>
             </div>
             <div class="col-lg-6 text-center">
-                <i class="fas fa-robot" style="font-size: 15rem; opacity: 0.3;"></i>
+                <!-- Fallback hero image removed for cleaner design -->
             </div>
         </div>
     </div>
 </section>
+{% endif %}
+
+<!-- Global Discount Banner -->
+{% if global_discount_active and global_discount %}
+    <div class="global-discount-banner bg-{{ global_discount.banner_color }}" id="globalDiscountBanner">
+        <div class="container">
+            <div class="discount-banner-content text-center text-white p-4">
+                <h3 class="mb-2">{{ global_discount.title }}</h3>
+                <p class="mb-4">{{ global_discount.description }}</p>
+                <div class="countdown-container d-flex justify-content-center">
+                    <div class="countdown-item">
+                        <div class="countdown-number" id="globalDays">00</div>
+                        <div class="countdown-label">Days</div>
+                    </div>
+                    <div class="countdown-item">
+                        <div class="countdown-number" id="globalHours">00</div>
+                        <div class="countdown-label">Hours</div>
+                    </div>
+                    <div class="countdown-item">
+                        <div class="countdown-number" id="globalMinutes">00</div>
+                        <div class="countdown-label">Minutes</div>
+                    </div>
+                    <div class="countdown-item">
+                        <div class="countdown-number" id="globalSeconds">00</div>
+                        <div class="countdown-label">Seconds</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" 
+                        onclick="hideGlobalDiscountBanner()" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+{% endif %}
 
 <!-- Featured Courses Section -->
 <section class="py-5">
@@ -51,62 +166,95 @@
         <div class="row">
             {% for course in featured_courses %}
             <div class="col-lg-4 col-md-6 mb-4">
-                <div class="card course-card h-100">
-                    {% if course.thumbnail %}
-                        <img src="{{ course.thumbnail.url }}" class="card-img-top course-thumbnail" alt="{{ course.title }}">
-                    {% else %}
-                        <div class="card-img-top course-thumbnail bg-light d-flex align-items-center justify-content-center">
-                            <i class="fas fa-image text-muted" style="font-size: 3rem;"></i>
-                        </div>
-                    {% endif %}
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div>
-                                <span class="badge bg-primary difficulty-badge">{{ course.get_difficulty_display }}</span>
-                                {% if course.created_at|date:"Y-m-d" >= "2024-01-01" %}
-                                    <span class="badge bg-success ms-1">New</span>
-                                {% endif %}
+                <div class="card course-card h-100 border-0 shadow-sm hover-shadow-lg transition-all duration-300 cursor-pointer group overflow-hidden">
+                    <div class="relative">
+                        {% if course.thumbnail %}
+                            <img src="{{ course.thumbnail.url }}" class="w-100 h-48 object-cover group-hover-scale-105 transition-transform duration-300" alt="{{ course.title }}">
+                        {% else %}
+                            <div class="w-100 h-48 bg-light d-flex align-items-center justify-content-center">
+                                <i class="fas fa-image text-muted" style="font-size: 3rem;"></i>
                             </div>
-                            <div class="text-end">
-                                {% if course.price == 0 %}
-                                    <span class="price text-success fw-bold">Free</span>
+                        {% endif %}
+                        
+                        <!-- Discount Badge -->
+                        {% if course.has_active_discount %}
+                            <span class="badge bg-danger text-white position-absolute top-2 start-2 px-2 py-1 text-xs font-medium">-{{ course.get_discount_percentage }}%</span>
+                        {% elif course.has_any_discount %}
+                            <span class="badge bg-warning text-dark position-absolute top-2 start-2 px-2 py-1 text-xs font-medium">-{{ course.get_discount_percentage }}%</span>
+                        {% endif %}
+                        
+                        <!-- Difficulty Badge -->
+                        <span class="badge bg-secondary text-white position-absolute top-2 end-2 px-2 py-1 text-xs font-medium">{{ course.get_difficulty_display }}</span>
+                    </div>
+                    
+                    <div class="card-body p-4">
+                        <h5 class="font-semibold mb-2 line-clamp-2">{{ course.title }}</h5>
+                        <p class="text-sm text-muted mb-3 line-clamp-2">{{ course.short_description|truncatewords:15 }}</p>
+                        
+                        <!-- Instructor -->
+                        <div class="flex items-center gap-2 text-sm text-muted mb-3">
+                            <span>by {{ course.instructor.get_full_name|default:course.instructor.username }}</span>
+                        </div>
+                        
+                        <!-- Stats Row -->
+                        <div class="flex items-center gap-4 text-sm text-muted mb-3">
+                            <!-- Rating -->
+                            <div class="flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="fill-yellow-400 text-yellow-400">
+                                    <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path>
+                                </svg>
+                                <span>{% if course.rating > 0 %}{{ course.rating|floatformat:1 }}{% else %}0.0{% endif %}</span>
+                            </div>
+                            
+                            <!-- Students -->
+                            <div class="flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                                    <path d="M16 3.128a4 4 0 0 1 0 7.744"></path>
+                                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                </svg>
+                                <span>{{ course.students_enrolled|floatformat:0 }}</span>
+                            </div>
+                            
+                            <!-- Duration -->
+                            <div class="flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 6v6l4 2"></path>
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                </svg>
+                                <span>{{ course.duration }}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Price -->
+                        <div class="flex items-center gap-2 mb-3">
+                            {% if course.price == 0 %}
+                                <span class="text-xl font-bold text-success">Free</span>
+                            {% else %}
+                                {% if course.has_active_discount %}
+                                    <span class="text-xl font-bold">PKR {{ course.discount_price }}</span>
+                                    <span class="text-sm text-muted line-through">PKR {{ course.price }}</span>
+                                    <!-- Countdown Timer -->
+                                    <div class="countdown-timer mt-1" data-end-time="{{ course.discount_end_date|date:'Y-m-d H:i:s' }}" data-course-id="{{ course.id }}">
+                                        <small class="text-danger">
+                                            <i class="fas fa-clock me-1"></i>
+                                            <span class="countdown-text">Loading...</span>
+                                        </small>
+                                    </div>
+                                {% elif course.has_any_discount %}
+                                    <span class="text-xl font-bold">PKR {{ course.get_current_price }}</span>
+                                    <span class="text-sm text-muted line-through">PKR {{ course.price }}</span>
                                 {% else %}
-                                    <span class="price">PKR {{ course.price }}</span>
+                                    <span class="text-xl font-bold">PKR {{ course.price }}</span>
                                 {% endif %}
-                            </div>
+                            {% endif %}
                         </div>
-                        <h5 class="card-title">{{ course.title }}</h5>
-                        <p class="card-text text-muted">{{ course.short_description|truncatewords:15 }}</p>
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <div class="rating">
-                                {% if course.rating > 0 %}
-                                    {% for i in "12345" %}
-                                        {% if forloop.counter <= course.rating %}
-                                            <i class="fas fa-star text-warning"></i>
-                                        {% elif forloop.counter <= course.rating|add:0.5 %}
-                                            <i class="fas fa-star-half-alt text-warning"></i>
-                                        {% else %}
-                                            <i class="far fa-star text-muted"></i>
-                                        {% endif %}
-                                    {% endfor %}
-                                    <span class="ms-1 text-muted">({{ course.total_ratings }} review{{ course.total_ratings|pluralize }})</span>
-                                {% else %}
-                                    <span class="text-muted">No ratings yet</span>
-                                {% endif %}
-                            </div>
-                            <div class="stats">
-                                <i class="fas fa-users me-1"></i>{{ course.students_enrolled }} student{{ course.students_enrolled|pluralize }}
-                            </div>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <small class="text-muted">
-                                <i class="fas fa-clock me-1"></i>{{ course.duration }}
-                            </small>
-                            <small class="text-muted">
-                                <i class="fas fa-play-circle me-1"></i>{{ course.lessons.count }} lesson{{ course.lessons.count|pluralize }}
-                            </small>
-                        </div>
-                        <a href="{% url 'courses:course_detail' course.slug %}" class="btn btn-primary w-100">View Course</a>
+                    </div>
+                    
+                    <!-- Card Footer -->
+                    <div class="card-footer bg-transparent border-0 p-4 pt-0">
+                        <a href="{% url 'courses:course_detail' course.slug %}" class="btn btn-outline-primary w-100 border bg-background text-foreground hover-bg-accent hover-text-accent-foreground transition-all duration-200">View Details</a>
                     </div>
                 </div>
             </div>
@@ -136,62 +284,95 @@
         <div class="row">
             {% for course in latest_courses %}
             <div class="col-lg-4 col-md-6 mb-4">
-                <div class="card course-card h-100">
-                    {% if course.thumbnail %}
-                        <img src="{{ course.thumbnail.url }}" class="card-img-top course-thumbnail" alt="{{ course.title }}">
-                    {% else %}
-                        <div class="card-img-top course-thumbnail bg-light d-flex align-items-center justify-content-center">
-                            <i class="fas fa-image text-muted" style="font-size: 3rem;"></i>
-                        </div>
-                    {% endif %}
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div>
-                                <span class="badge bg-success difficulty-badge">{{ course.get_difficulty_display }}</span>
-                                {% if course.created_at|date:"Y-m-d" >= "2024-01-01" %}
-                                    <span class="badge bg-success ms-1">New</span>
-                                {% endif %}
+                <div class="card course-card h-100 border-0 shadow-sm hover-shadow-lg transition-all duration-300 cursor-pointer group overflow-hidden">
+                    <div class="relative">
+                        {% if course.thumbnail %}
+                            <img src="{{ course.thumbnail.url }}" class="w-100 h-48 object-cover group-hover-scale-105 transition-transform duration-300" alt="{{ course.title }}">
+                        {% else %}
+                            <div class="w-100 h-48 bg-light d-flex align-items-center justify-content-center">
+                                <i class="fas fa-image text-muted" style="font-size: 3rem;"></i>
                             </div>
-                            <div class="text-end">
-                                {% if course.price == 0 %}
-                                    <span class="price text-success fw-bold">Free</span>
+                        {% endif %}
+                        
+                        <!-- Discount Badge -->
+                        {% if course.has_active_discount %}
+                            <span class="badge bg-danger text-white position-absolute top-2 start-2 px-2 py-1 text-xs font-medium">-{{ course.get_discount_percentage }}%</span>
+                        {% elif course.has_any_discount %}
+                            <span class="badge bg-warning text-dark position-absolute top-2 start-2 px-2 py-1 text-xs font-medium">-{{ course.get_discount_percentage }}%</span>
+                        {% endif %}
+                        
+                        <!-- Difficulty Badge -->
+                        <span class="badge bg-secondary text-white position-absolute top-2 end-2 px-2 py-1 text-xs font-medium">{{ course.get_difficulty_display }}</span>
+                    </div>
+                    
+                    <div class="card-body p-4">
+                        <h5 class="font-semibold mb-2 line-clamp-2">{{ course.title }}</h5>
+                        <p class="text-sm text-muted mb-3 line-clamp-2">{{ course.short_description|truncatewords:15 }}</p>
+                        
+                        <!-- Instructor -->
+                        <div class="flex items-center gap-2 text-sm text-muted mb-3">
+                            <span>by {{ course.instructor.get_full_name|default:course.instructor.username }}</span>
+                        </div>
+                        
+                        <!-- Stats Row -->
+                        <div class="flex items-center gap-4 text-sm text-muted mb-3">
+                            <!-- Rating -->
+                            <div class="flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="fill-yellow-400 text-yellow-400">
+                                    <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path>
+                                </svg>
+                                <span>{% if course.rating > 0 %}{{ course.rating|floatformat:1 }}{% else %}0.0{% endif %}</span>
+                            </div>
+                            
+                            <!-- Students -->
+                            <div class="flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                                    <path d="M16 3.128a4 4 0 0 1 0 7.744"></path>
+                                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                </svg>
+                                <span>{{ course.students_enrolled|floatformat:0 }}</span>
+                            </div>
+                            
+                            <!-- Duration -->
+                            <div class="flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 6v6l4 2"></path>
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                </svg>
+                                <span>{{ course.duration }}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Price -->
+                        <div class="flex items-center gap-2 mb-3">
+                            {% if course.price == 0 %}
+                                <span class="text-xl font-bold text-success">Free</span>
+                            {% else %}
+                                {% if course.has_active_discount %}
+                                    <span class="text-xl font-bold">PKR {{ course.discount_price }}</span>
+                                    <span class="text-sm text-muted line-through">PKR {{ course.price }}</span>
+                                    <!-- Countdown Timer -->
+                                    <div class="countdown-timer mt-1" data-end-time="{{ course.discount_end_date|date:'Y-m-d H:i:s' }}" data-course-id="{{ course.id }}">
+                                        <small class="text-danger">
+                                            <i class="fas fa-clock me-1"></i>
+                                            <span class="countdown-text">Loading...</span>
+                                        </small>
+                                    </div>
+                                {% elif course.has_any_discount %}
+                                    <span class="text-xl font-bold">PKR {{ course.get_current_price }}</span>
+                                    <span class="text-sm text-muted line-through">PKR {{ course.price }}</span>
                                 {% else %}
-                                    <span class="price">PKR {{ course.price }}</span>
+                                    <span class="text-xl font-bold">PKR {{ course.price }}</span>
                                 {% endif %}
-                            </div>
+                            {% endif %}
                         </div>
-                        <h5 class="card-title">{{ course.title }}</h5>
-                        <p class="card-text text-muted">{{ course.short_description|truncatewords:15 }}</p>
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <div class="rating">
-                                {% if course.rating > 0 %}
-                                    {% for i in "12345" %}
-                                        {% if forloop.counter <= course.rating %}
-                                            <i class="fas fa-star text-warning"></i>
-                                        {% elif forloop.counter <= course.rating|add:0.5 %}
-                                            <i class="fas fa-star-half-alt text-warning"></i>
-                                        {% else %}
-                                            <i class="far fa-star text-muted"></i>
-                                        {% endif %}
-                                    {% endfor %}
-                                    <span class="ms-1 text-muted">({{ course.total_ratings }} review{{ course.total_ratings|pluralize }})</span>
-                                {% else %}
-                                    <span class="text-muted">No ratings yet</span>
-                                {% endif %}
-                            </div>
-                            <div class="stats">
-                                <i class="fas fa-users me-1"></i>{{ course.students_enrolled }} student{{ course.students_enrolled|pluralize }}
-                            </div>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <small class="text-muted">
-                                <i class="fas fa-clock me-1"></i>{{ course.duration }}
-                            </small>
-                            <small class="text-muted">
-                                <i class="fas fa-play-circle me-1"></i>{{ course.lessons.count }} lesson{{ course.lessons.count|pluralize }}
-                            </small>
-                        </div>
-                        <a href="{% url 'courses:course_detail' course.slug %}" class="btn btn-primary w-100">View Course</a>
+                    </div>
+                    
+                    <!-- Card Footer -->
+                    <div class="card-footer bg-transparent border-0 p-4 pt-0">
+                        <a href="{% url 'courses:course_detail' course.slug %}" class="btn btn-outline-primary w-100 border bg-background text-foreground hover-bg-accent hover-text-accent-foreground transition-all duration-200">View Details</a>
                     </div>
                 </div>
             </div>
@@ -237,46 +418,129 @@
     </div>
 </section>
 
-<!-- Features Section -->
+<!-- Testimonials Section -->
 <section class="py-5 bg-light">
     <div class="container">
         <div class="row mb-4">
             <div class="col-12 text-center">
-                <h2 class="fw-bold mb-3">Why Choose Our Platform?</h2>
-                <p class="text-muted">Discover the advantages of learning with us</p>
+                <h2 class="fw-bold mb-3">What Our Students Say</h2>
+                <p class="text-muted">Join thousands of successful AI professionals</p>
             </div>
         </div>
         
         <div class="row">
-            <div class="col-lg-3 col-md-6 mb-4 text-center">
-                <div class="mb-3">
-                    <i class="fas fa-certificate text-primary" style="font-size: 3rem;"></i>
+            {% for review in top_reviews|slice:":3" %}
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <!-- Star Rating -->
+                        <div class="mb-3">
+                            {% for i in "12345" %}
+                                {% if forloop.counter <= review.rating %}
+                                    <i class="fas fa-star text-warning"></i>
+                                {% else %}
+                                    <i class="far fa-star text-muted"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Review Text -->
+                        <p class="text-muted mb-4">{{ review.comment|truncatewords:25 }}</p>
+                        
+                        <!-- Student Info -->
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                {% if review.student.profile.profile_picture %}
+                                    <img src="{{ review.student.profile.profile_picture.url }}" alt="{{ review.student.get_full_name|default:review.student.username }}" class="rounded-circle" width="48" height="48">
+                                {% else %}
+                                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h6 class="mb-1">{{ review.student.get_full_name|default:review.student.username }}</h6>
+                                <small class="text-muted">
+                                    {% if review.course %}
+                                        {{ review.course.title }}
+                                    {% else %}
+                                        Student
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <h5>Certified Courses</h5>
-                <p class="text-muted">Get industry-recognized certificates upon completion</p>
             </div>
-            <div class="col-lg-3 col-md-6 mb-4 text-center">
-                <div class="mb-3">
-                    <i class="fas fa-users text-primary" style="font-size: 3rem;"></i>
+            {% empty %}
+            <div class="col-12 text-center">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-5">
+                        <i class="fas fa-comments text-muted mb-3" style="font-size: 3rem;"></i>
+                        <h5 class="text-muted">No Reviews Yet</h5>
+                        <p class="text-muted">Be the first to share your experience!</p>
+                    </div>
                 </div>
-                <h5>Expert Instructors</h5>
-                <p class="text-muted">Learn from professionals with years of experience</p>
             </div>
-            <div class="col-lg-3 col-md-6 mb-4 text-center">
-                <div class="mb-3">
-                    <i class="fas fa-clock text-primary" style="font-size: 3rem;"></i>
-                </div>
-                <h5>Lifetime Access</h5>
-                <p class="text-muted">Access your courses anytime, anywhere</p>
-            </div>
-            <div class="col-lg-3 col-md-6 mb-4 text-center">
-                <div class="mb-3">
-                    <i class="fas fa-headset text-primary" style="font-size: 3rem;"></i>
-                </div>
-                <h5>24/7 Support</h5>
-                <p class="text-muted">Get help whenever you need it</p>
-            </div>
+            {% endfor %}
         </div>
+        
+        {% if top_reviews %}
+        <div class="text-center mt-4">
+            <a href="{% url 'courses:course_list' %}" class="btn btn-outline-primary">View All Courses</a>
+        </div>
+        {% endif %}
     </div>
 </section>
+
+<!-- Global Discount Countdown Script -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Global discount countdown timer
+        const globalDiscountBanner = document.getElementById('globalDiscountBanner');
+        if (globalDiscountBanner) {
+            const endTimeStr = '{{ global_discount.end_date|date:"Y-m-d H:i:s" }}';
+            if (endTimeStr && endTimeStr !== 'None') {
+                const endTime = new Date(endTimeStr.replace(' ', 'T'));
+                
+                function updateGlobalCountdown() {
+                    const now = new Date();
+                    const timeLeft = endTime - now;
+                    
+                    if (timeLeft <= 0) {
+                        // Global discount has expired
+                        globalDiscountBanner.style.display = 'none';
+                        return;
+                    }
+                    
+                    // Calculate time components
+                    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                    
+                    // Update countdown elements
+                    document.getElementById('globalDays').textContent = days.toString().padStart(2, '0');
+                    document.getElementById('globalHours').textContent = hours.toString().padStart(2, '0');
+                    document.getElementById('globalMinutes').textContent = minutes.toString().padStart(2, '0');
+                    document.getElementById('globalSeconds').textContent = seconds.toString().padStart(2, '0');
+                }
+                
+                // Update immediately
+                updateGlobalCountdown();
+                
+                // Update every second
+                setInterval(updateGlobalCountdown, 1000);
+            }
+        }
+    });
+    
+    // Function to hide global discount banner
+    function hideGlobalDiscountBanner() {
+        const banner = document.getElementById('globalDiscountBanner');
+        if (banner) {
+            banner.style.display = 'none';
+        }
+    }
+</script>
 {% endblock %}
