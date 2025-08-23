@@ -19,6 +19,75 @@ def validate_video_file(value):
     if value.size > 524288000:  # 500MB in bytes
         raise ValidationError('Video file size must be under 500MB.')
 
+class GlobalDiscount(models.Model):
+    """Global discount for all courses"""
+    title = models.CharField(max_length=200, default="Limited Time Offer!")
+    description = models.CharField(max_length=300, default="Get amazing discounts on all AI courses")
+    discount_percentage = models.PositiveIntegerField(help_text="Discount percentage (e.g., 50 for 50% off)")
+    
+    # Timing
+    start_date = models.DateTimeField(null=True, blank=True, help_text="When the discount starts (leave blank for immediate start)")
+    end_date = models.DateTimeField(help_text="When the discount expires")
+    
+    # Status
+    is_active = models.BooleanField(default=False, help_text="Whether the global discount is currently active")
+    
+    # Display settings
+    show_banner = models.BooleanField(default=True, help_text="Show the discount banner on pages")
+    banner_color = models.CharField(max_length=20, default="orange", choices=[
+        ('orange', 'Orange'),
+        ('red', 'Red'),
+        ('blue', 'Blue'),
+        ('green', 'Green'),
+        ('purple', 'Purple'),
+    ])
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Global Discount"
+        verbose_name_plural = "Global Discounts"
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.title} - {self.discount_percentage}% off"
+    
+    def is_currently_active(self):
+        """Check if the global discount is currently active"""
+        if not self.is_active:
+            return False
+        
+        now = timezone.now()
+        return (self.start_date is None or now >= self.start_date) and now <= self.end_date
+    
+    def get_remaining_time(self):
+        """Get remaining time in seconds"""
+        if not self.is_currently_active():
+            return 0
+        
+        now = timezone.now()
+        remaining = self.end_date - now
+        return max(0, int(remaining.total_seconds()))
+    
+    def get_discount_multiplier(self):
+        """Get the discount multiplier (e.g., 0.5 for 50% off)"""
+        from decimal import Decimal
+        return Decimal(str((100 - self.discount_percentage) / 100))
+    
+    def apply_to_price(self, original_price):
+        """Apply discount to a price"""
+        if not self.is_currently_active():
+            return original_price
+        
+        return original_price * self.get_discount_multiplier()
+    
+    def save(self, *args, **kwargs):
+        # Update active status based on current time
+        self.is_active = self.is_currently_active()
+        super().save(*args, **kwargs)
+
 class Category(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
@@ -49,6 +118,16 @@ class Course(models.Model):
     duration = models.CharField(max_length=50, help_text="e.g., '10 hours', '5 weeks'")
     difficulty = models.CharField(max_length=20, choices=DIFFICULTY_CHOICES, default='beginner')
     language = models.CharField(max_length=50, default='English')
+    
+    # Discount fields
+    discount_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, 
+                                       help_text="Discounted price during promotion")
+    discount_start_date = models.DateTimeField(null=True, blank=True, 
+                                             help_text="When the discount starts")
+    discount_end_date = models.DateTimeField(null=True, blank=True, 
+                                           help_text="When the discount ends")
+    is_discount_active = models.BooleanField(default=False, 
+                                           help_text="Whether the discount is currently active")
     
     # Media
     thumbnail = models.ImageField(upload_to='course_thumbnails/', blank=True, null=True)
@@ -88,6 +167,67 @@ class Course(models.Model):
     def is_free(self):
         """Check if course is free"""
         return self.price == 0
+    
+    def has_active_discount(self):
+        """Check if course has an active individual discount"""
+        if not self.is_discount_active or not self.discount_price or not self.discount_end_date:
+            return False
+        
+        now = timezone.now()
+        return (self.discount_start_date is None or now >= self.discount_start_date) and now <= self.discount_end_date
+    
+    def has_any_discount(self):
+        """Check if course has any active discount (individual or global)"""
+        # Check individual discount first
+        if self.has_active_discount():
+            return True
+        
+        # Check global discount
+        from .models import GlobalDiscount
+        global_discount = GlobalDiscount.objects.filter(is_active=True).first()
+        return global_discount and global_discount.is_currently_active()
+    
+    def get_current_price(self):
+        """Get the current price (discounted if active, otherwise regular price)"""
+        # Check for individual course discount first
+        if self.has_active_discount():
+            return self.discount_price
+        
+        # Check for global discount
+        from .models import GlobalDiscount
+        global_discount = GlobalDiscount.objects.filter(is_active=True).first()
+        if global_discount and global_discount.is_currently_active():
+            return global_discount.apply_to_price(self.price)
+        
+        return self.price
+    
+    def get_discount_percentage(self):
+        """Calculate discount percentage"""
+        # Check for individual course discount first
+        if self.has_active_discount():
+            if self.price == 0:
+                return 0
+            
+            discount_amount = self.price - self.discount_price
+            percentage = (discount_amount / self.price) * 100
+            return round(percentage, 0)
+        
+        # Check for global discount
+        from .models import GlobalDiscount
+        global_discount = GlobalDiscount.objects.filter(is_active=True).first()
+        if global_discount and global_discount.is_currently_active():
+            return global_discount.discount_percentage
+        
+        return 0
+    
+    def get_discount_remaining_time(self):
+        """Get remaining time for discount in seconds"""
+        if not self.has_active_discount():
+            return 0
+        
+        now = timezone.now()
+        remaining = self.discount_end_date - now
+        return max(0, int(remaining.total_seconds()))
     
     def user_has_access(self, user):
         """Check if user has access to this course"""
@@ -165,6 +305,11 @@ class Course(models.Model):
         
         if self.is_published and not self.published_at:
             self.published_at = timezone.now()
+        
+        # Update discount active status
+        if self.discount_price and self.discount_end_date:
+            self.is_discount_active = self.has_active_discount()
+        
         super().save(*args, **kwargs)
 
 class Lesson(models.Model):
@@ -330,3 +475,160 @@ class CourseProgress(models.Model):
     
     def __str__(self):
         return f"{self.student.username} - {self.lesson.title}"
+
+class SiteSettings(models.Model):
+    """Site-wide settings for branding and configuration"""
+    site_name = models.CharField(max_length=100, default="AI Course Platform", help_text="Main site name")
+    site_tagline = models.CharField(max_length=200, default="Learn AI & Machine Learning", help_text="Site tagline/subtitle")
+    logo = models.ImageField(upload_to='site_logos/', null=True, blank=True, help_text="Site logo (recommended: 200x50px)")
+    favicon = models.ImageField(upload_to='site_favicons/', null=True, blank=True, help_text="Favicon (recommended: 32x32px)")
+    footer_text = models.TextField(default="© 2024 AI Course Platform. All rights reserved.", help_text="Footer copyright text")
+    contact_email = models.EmailField(default="contact@aicourseplatform.com", help_text="Contact email address")
+    contact_phone = models.CharField(max_length=20, default="+1 (555) 123-4567", help_text="Contact phone number")
+    
+    # Social Media Links
+    facebook_url = models.URLField(blank=True, null=True, help_text="Facebook page URL")
+    twitter_url = models.URLField(blank=True, null=True, help_text="Twitter/X page URL")
+    linkedin_url = models.URLField(blank=True, null=True, help_text="LinkedIn page URL")
+    instagram_url = models.URLField(blank=True, null=True, help_text="Instagram page URL")
+    youtube_url = models.URLField(blank=True, null=True, help_text="YouTube channel URL")
+    
+    # SEO Settings
+    meta_description = models.TextField(default="Learn AI and Machine Learning with our comprehensive online courses. Expert-led tutorials, hands-on projects, and flexible learning paths.", help_text="Meta description for SEO")
+    meta_keywords = models.CharField(max_length=500, default="AI, Machine Learning, Python, Data Science, Online Courses", help_text="Meta keywords for SEO")
+    
+    # Analytics
+    google_analytics_id = models.CharField(max_length=50, blank=True, null=True, help_text="Google Analytics tracking ID (GA4)")
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Site Settings"
+        verbose_name_plural = "Site Settings"
+    
+    def __str__(self):
+        return f"Site Settings - {self.site_name}"
+    
+    def save(self, *args, **kwargs):
+        # Ensure only one instance exists
+        if not self.pk and SiteSettings.objects.exists():
+            return
+        super().save(*args, **kwargs)
+    
+    @classmethod
+    def get_settings(cls):
+        """Get the site settings, create if doesn't exist"""
+        settings, created = cls.objects.get_or_create(
+            pk=1,
+            defaults={
+                'site_name': 'AI Course Platform',
+                'site_tagline': 'Learn AI & Machine Learning',
+                'footer_text': '© 2024 AI Course Platform. All rights reserved.',
+                'contact_email': 'contact@aicourseplatform.com',
+                'contact_phone': '+1 (555) 123-4567',
+                'meta_description': 'Learn AI and Machine Learning with our comprehensive online courses. Expert-led tutorials, hands-on projects, and flexible learning paths.',
+                'meta_keywords': 'AI, Machine Learning, Python, Data Science, Online Courses',
+            }
+        )
+        return settings
+
+class Banner(models.Model):
+    """Dynamic banner management for hero section"""
+    
+    title = models.CharField(max_length=200, help_text="Banner title")
+    subtitle = models.CharField(max_length=300, blank=True, help_text="Banner subtitle")
+    description = models.TextField(blank=True, help_text="Banner description")
+    image = models.ImageField(upload_to='banners/', help_text="Banner image (recommended: 1920x600px)")
+    mobile_image = models.ImageField(upload_to='banners/mobile/', blank=True, null=True, help_text="Mobile optimized image (optional)")
+    
+    # Animation settings
+    animation_type = models.CharField(
+        max_length=50,
+        choices=[
+            ('fade', 'Fade In/Out'),
+            ('slide', 'Slide Left/Right'),
+            ('zoom', 'Zoom In/Out'),
+            ('bounce', 'Bounce'),
+            ('flip', 'Flip'),
+        ],
+        default='fade',
+        help_text="Animation effect for this banner"
+    )
+    
+    # Display settings
+    banner_type = models.CharField(max_length=20, default='hero', editable=False)
+    is_active = models.BooleanField(default=True, help_text="Show this banner")
+    order = models.PositiveIntegerField(default=0, help_text="Display order (lower numbers first)")
+    
+    # Timing settings
+    start_date = models.DateTimeField(blank=True, null=True, help_text="When to start showing this banner")
+    end_date = models.DateTimeField(blank=True, null=True, help_text="When to stop showing this banner")
+    
+    # Call to action
+    cta_text = models.CharField(max_length=100, blank=True, help_text="Call to action button text")
+    cta_url = models.CharField(max_length=200, blank=True, help_text="Call to action URL")
+    cta_color = models.CharField(
+        max_length=20,
+        choices=[
+            ('primary', 'Primary Blue'),
+            ('secondary', 'Secondary Gray'),
+            ('success', 'Success Green'),
+            ('danger', 'Danger Red'),
+            ('warning', 'Warning Yellow'),
+            ('info', 'Info Cyan'),
+            ('light', 'Light White'),
+            ('dark', 'Dark Black'),
+        ],
+        default='primary',
+        help_text="Button color"
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['order', '-created_at']
+        verbose_name = 'Banner'
+        verbose_name_plural = 'Banners'
+    
+    def __str__(self):
+        return f"{self.title} (Hero Banner)"
+    
+    def is_currently_active(self):
+        """Check if banner should be displayed now"""
+        if not self.is_active:
+            return False
+        
+        now = timezone.now()
+        
+        if self.start_date and now < self.start_date:
+            return False
+        
+        if self.end_date and now > self.end_date:
+            return False
+        
+        return True
+    
+    def get_image_url(self, request=None):
+        """Get appropriate image URL based on device"""
+        if request and hasattr(request, 'META'):
+            user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
+            if 'mobile' in user_agent or 'android' in user_agent or 'iphone' in user_agent:
+                if self.mobile_image:
+                    return self.mobile_image.url
+        
+        return self.image.url
+    
+    def get_animation_class(self):
+        """Get CSS animation class"""
+        animation_classes = {
+            'fade': 'animate__animated animate__fadeIn',
+            'slide': 'animate__animated animate__slideInLeft',
+            'zoom': 'animate__animated animate__zoomIn',
+            'bounce': 'animate__animated animate__bounceIn',
+            'flip': 'animate__animated animate__flipInX',
+        }
+        return animation_classes.get(self.animation_type, 'animate__animated animate__fadeIn')

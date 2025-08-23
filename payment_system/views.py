@@ -49,7 +49,7 @@ def payment_page(request, slug):
                 student=request.user,
                 course=course,
                 payment_method=payment_method,
-                amount=course.price,
+                amount=course.get_current_price(),
                 transaction_id=transaction_id,
                 reference_number=reference_number,
                 student_notes=student_notes,

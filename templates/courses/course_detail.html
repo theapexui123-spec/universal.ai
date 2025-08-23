@@ -99,7 +99,27 @@
                         {% if course.is_free %}
                             <h3 class="text-success fw-bold">Free</h3>
                         {% else %}
-                            <h3 class="text-success fw-bold">PKR {{ course.price }}</h3>
+                            {% if course.has_active_discount %}
+                                <div class="discount-price-container">
+                                    <h4 class="text-decoration-line-through text-muted mb-1">PKR {{ course.price }}</h4>
+                                    <h3 class="text-danger fw-bold mb-2">PKR {{ course.discount_price }}</h3>
+                                    <span class="badge bg-danger mb-2">Save {{ course.get_discount_percentage }}%</span>
+                                    <div class="countdown-timer" data-end-time="{{ course.discount_end_date|date:'Y-m-d H:i:s' }}" data-course-id="{{ course.id }}">
+                                        <small class="text-danger">
+                                            <i class="fas fa-clock me-1"></i>
+                                            <span class="countdown-text">Loading...</span>
+                                        </small>
+                                    </div>
+                                </div>
+                            {% elif course.has_any_discount %}
+                                <div class="discount-price-container">
+                                    <h4 class="text-decoration-line-through text-muted mb-1">PKR {{ course.price }}</h4>
+                                    <h3 class="text-danger fw-bold mb-2">PKR {{ course.get_current_price }}</h3>
+                                    <span class="badge bg-warning text-dark mb-2">Save {{ course.get_discount_percentage }}%</span>
+                                </div>
+                            {% else %}
+                                <h3 class="text-success fw-bold">PKR {{ course.price }}</h3>
+                            {% endif %}
                         {% endif %}
                     </div>
                     

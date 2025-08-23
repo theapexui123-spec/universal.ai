@@ -2,7 +2,56 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django import forms
 from django.db import models
-from .models import Category, Course, Lesson, Enrollment, Review, CourseProgress
+from .models import Category, Course, Lesson, Enrollment, Review, CourseProgress, GlobalDiscount, SiteSettings, Banner
+from django.utils import timezone
+
+@admin.register(GlobalDiscount)
+class GlobalDiscountAdmin(admin.ModelAdmin):
+    list_display = ['title', 'discount_percentage', 'start_date', 'end_date', 'is_active', 'show_banner', 'banner_color', 'status_display']
+    list_filter = ['is_active', 'show_banner', 'banner_color', 'created_at']
+    search_fields = ['title', 'description']
+    readonly_fields = ['created_at', 'updated_at', 'status_display']
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('title', 'description', 'discount_percentage')
+        }),
+        ('Timing', {
+            'fields': ('start_date', 'end_date')
+        }),
+        ('Display Settings', {
+            'fields': ('show_banner', 'banner_color')
+        }),
+        ('Status', {
+            'fields': ('is_active', 'status_display')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    actions = ['activate_discounts', 'deactivate_discounts']
+    
+    def status_display(self, obj):
+        """Show current status"""
+        if obj.is_currently_active():
+            return format_html(
+                '<span style="color: green; font-weight: bold;">✓ Active</span>'
+            )
+        elif obj.end_date and obj.end_date < timezone.now():
+            return format_html('<span style="color: orange;">⚠ Expired</span>')
+        else:
+            return format_html('<span style="color: #999;">Inactive</span>')
+    status_display.short_description = 'Current Status'
+    
+    def activate_discounts(self, request, queryset):
+        queryset.update(is_active=True)
+    activate_discounts.short_description = "Activate selected global discounts"
+    
+    def deactivate_discounts(self, request, queryset):
+        queryset.update(is_active=False)
+    deactivate_discounts.short_description = "Deactivate selected global discounts"
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
@@ -12,8 +61,8 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ['title', 'instructor', 'category', 'price', 'difficulty', 'is_published', 'is_featured', 'students_enrolled', 'rating', 'created_at', 'video_preview']
-    list_filter = ['is_published', 'is_featured', 'difficulty', 'category', 'created_at']
+    list_display = ['title', 'instructor', 'category', 'price', 'discount_price', 'difficulty', 'is_published', 'is_featured', 'students_enrolled', 'rating', 'created_at', 'video_preview']
+    list_filter = ['is_published', 'is_featured', 'difficulty', 'category', 'is_discount_active', 'created_at']
     search_fields = ['title', 'description', 'instructor__username', 'instructor__first_name', 'instructor__last_name']
     prepopulated_fields = {'slug': ('title',)}
     autocomplete_fields = ['instructor', 'category']
@@ -24,13 +73,17 @@ class CourseAdmin(admin.ModelAdmin):
         if search_term:
             queryset |= self.model.objects.filter(title__icontains=search_term)
         return queryset, use_distinct
-    readonly_fields = ['students_enrolled', 'rating', 'total_ratings', 'created_at', 'updated_at', 'published_at', 'video_player']
+    readonly_fields = ['students_enrolled', 'rating', 'total_ratings', 'created_at', 'updated_at', 'published_at', 'video_player', 'discount_status']
     fieldsets = (
         ('Basic Information', {
             'fields': ('title', 'slug', 'description', 'short_description', 'category', 'instructor')
         }),
         ('Course Details', {
             'fields': ('price', 'duration', 'difficulty', 'language')
+        }),
+        ('Discount Settings', {
+            'fields': ('discount_price', 'discount_start_date', 'discount_end_date', 'is_discount_active', 'discount_status'),
+            'description': 'Set up time-limited discounts for this course. The discount will be automatically activated/deactivated based on the date range.'
         }),
         ('Media Content', {
             'fields': ('thumbnail', 'video_intro', 'course_video', 'video_player'),
@@ -51,7 +104,21 @@ class CourseAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    actions = ['publish_courses', 'unpublish_courses', 'feature_courses', 'unfeature_courses']
+    actions = ['publish_courses', 'unpublish_courses', 'feature_courses', 'unfeature_courses', 'activate_discounts', 'deactivate_discounts']
+    
+    def discount_status(self, obj):
+        """Show discount status"""
+        if obj.has_active_discount():
+            percentage = obj.get_discount_percentage()
+            return format_html(
+                '<span style="color: green; font-weight: bold;">✓ Active ({:.0f}% off)</span>',
+                percentage
+            )
+        elif obj.discount_price and obj.discount_end_date:
+            return format_html('<span style="color: orange;">⚠ Expired</span>')
+        else:
+            return format_html('<span style="color: #999;">No discount</span>')
+    discount_status.short_description = 'Discount Status'
     
     def video_preview(self, obj):
         """Show video preview in list view"""
@@ -112,6 +179,14 @@ class CourseAdmin(admin.ModelAdmin):
     def unfeature_courses(self, request, queryset):
         queryset.update(is_featured=False)
     unfeature_courses.short_description = "Unfeature selected courses"
+    
+    def activate_discounts(self, request, queryset):
+        queryset.update(is_discount_active=True)
+    activate_discounts.short_description = "Activate discounts for selected courses"
+    
+    def deactivate_discounts(self, request, queryset):
+        queryset.update(is_discount_active=False)
+    deactivate_discounts.short_description = "Deactivate discounts for selected courses"
 
 class LessonAdminForm(forms.ModelForm):
     """Custom form for Lesson admin to ensure all courses are shown"""
@@ -273,3 +348,94 @@ class CourseProgressAdmin(admin.ModelAdmin):
     list_filter = ['completed', 'completed_at', 'lesson__course']
     search_fields = ['student__username', 'lesson__title', 'lesson__course__title']
     readonly_fields = ['completed_at']
+
+@admin.register(Banner)
+class BannerAdmin(admin.ModelAdmin):
+    list_display = ['title', 'is_active', 'order', 'animation_type', 'is_currently_active', 'created_at']
+    list_filter = ['is_active', 'animation_type', 'created_at']
+    search_fields = ['title', 'subtitle', 'description']
+    list_editable = ['is_active', 'order']
+    readonly_fields = ['created_at', 'updated_at', 'is_currently_active']
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('title', 'subtitle', 'description')
+        }),
+        ('Images', {
+            'fields': ('image', 'mobile_image'),
+            'description': 'Upload banner images. Mobile image is optional and will be used for mobile devices.'
+        }),
+        ('Animation & Display', {
+            'fields': ('animation_type', 'is_active', 'order'),
+            'description': 'Configure how the banner appears and animates.'
+        }),
+        ('Timing', {
+            'fields': ('start_date', 'end_date'),
+            'description': 'Set when this banner should be displayed. Leave empty for always active.',
+            'classes': ('collapse',)
+        }),
+        ('Call to Action', {
+            'fields': ('cta_text', 'cta_url', 'cta_color'),
+            'description': 'Configure the call-to-action button.',
+            'classes': ('collapse',)
+        }),
+        ('Status', {
+            'fields': ('is_currently_active',),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def is_currently_active(self, obj):
+        """Show current status"""
+        if obj.is_currently_active():
+            return format_html(
+                '<span style="color: green; font-weight: bold;">✓ Active</span>'
+            )
+        else:
+            return format_html('<span style="color: red;">✗ Inactive</span>')
+    is_currently_active.short_description = 'Currently Active'
+
+@admin.register(SiteSettings)
+class SiteSettingsAdmin(admin.ModelAdmin):
+    list_display = ['site_name', 'contact_email', 'updated_at']
+    readonly_fields = ['created_at', 'updated_at']
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('site_name', 'site_tagline', 'logo', 'favicon')
+        }),
+        ('Contact Information', {
+            'fields': ('contact_email', 'contact_phone')
+        }),
+        ('Footer Settings', {
+            'fields': ('footer_text',)
+        }),
+        ('Social Media Links', {
+            'fields': ('facebook_url', 'twitter_url', 'linkedin_url', 'instagram_url', 'youtube_url'),
+            'classes': ('collapse',)
+        }),
+        ('SEO Settings', {
+            'fields': ('meta_description', 'meta_keywords'),
+            'classes': ('collapse',)
+        }),
+        ('Analytics', {
+            'fields': ('google_analytics_id',),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def has_add_permission(self, request):
+        # Only allow one instance
+        return not SiteSettings.objects.exists()
+    
+    def has_delete_permission(self, request, obj=None):
+        # Don't allow deletion of the only instance
+        return False

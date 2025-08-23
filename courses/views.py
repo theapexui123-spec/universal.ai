@@ -7,7 +7,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.contrib.admin.views.decorators import staff_member_required
-from .models import Course, Category, Enrollment, Review, CourseProgress, Lesson
+from .models import Course, Category, Enrollment, Review, CourseProgress, Lesson, Banner
 from .forms import ReviewForm, ReviewFilterForm, CourseRatingForm
 from payment_system.models import Payment, PaymentMethod, PaymentSettings
 
@@ -17,10 +17,27 @@ def home(request):
     latest_courses = Course.objects.filter(is_published=True).order_by('-created_at')[:6]
     categories = Category.objects.all()[:8]
     
+    # Get top reviews for testimonials section
+    top_reviews = Review.objects.filter(
+        is_moderated=True,
+        rating__gte=4
+    ).order_by('-created_at')[:6]
+    
+    # Get active banners for hero section
+    active_banners = Banner.objects.filter(
+        is_active=True
+    ).filter(
+        Q(start_date__isnull=True) | Q(start_date__lte=timezone.now())
+    ).filter(
+        Q(end_date__isnull=True) | Q(end_date__gte=timezone.now())
+    ).order_by('order', '-created_at')
+    
     context = {
         'featured_courses': featured_courses,
         'latest_courses': latest_courses,
         'categories': categories,
+        'active_banners': active_banners,
+        'top_reviews': top_reviews,
     }
     return render(request, 'courses/home.html', context)
 

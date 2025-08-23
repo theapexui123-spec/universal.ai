@@ -106,6 +106,7 @@ celerybeat.pid
 .venv
 env/
 venv/
+venv_new/
 ENV/
 env.bak/
 venv.bak/
@@ -269,3 +270,46 @@ $RECYCLE.BIN/
 
 # Project specific
 # Add any project-specific files or directories here
+
+# Django specific additional files
+*.sqlite3
+*.db
+db.sqlite3
+db.sqlite3-journal
+
+# Media files (user uploads)
+media/
+
+# Static files (collected)
+staticfiles/
+
+# Local development files
+local_settings.py
+settings_local.py
+
+# Management command outputs
+*.log
+logs/
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+*.temp
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
