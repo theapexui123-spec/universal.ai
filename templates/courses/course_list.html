@@ -89,13 +89,13 @@
     </div>
 
     <!-- Courses Grid -->
-    <div class="row">
+    <div class="row course-container">
         {% for course in page_obj %}
         <div class="col-lg-4 col-md-6 mb-4">
             <div class="card course-card h-100 border-0 shadow-sm hover-shadow-lg transition-all duration-300 cursor-pointer group overflow-hidden">
                 <div class="relative">
                     {% if course.thumbnail %}
-                        <img src="{{ course.thumbnail.url }}" class="w-100 h-48 object-cover group-hover-scale-105 transition-transform duration-300" alt="{{ course.title }}">
+                        <img src="{{ course.thumbnail.url }}" class="w-100 h-48 object-cover group-hover-scale-105 transition-transform duration-300" alt="{{ course.title }}" loading="lazy">
                     {% else %}
                         <div class="w-100 h-48 bg-light d-flex align-items-center justify-content-center">
                             <i class="fas fa-image text-muted" style="font-size: 3rem;"></i>
@@ -213,6 +213,19 @@
             </a>
         </div>
         {% endfor %}
+    </div>
+
+    <!-- Performance Indicator -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Performance Optimized:</strong> Showing {{ page_obj|length }} of {{ total_courses }} courses. 
+                {% if has_next %}
+                    <span class="text-success">More courses will load automatically as you scroll!</span>
+                {% endif %}
+            </div>
+        </div>
     </div>
 
     <!-- Pagination -->

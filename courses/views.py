@@ -13,22 +13,23 @@ from payment_system.models import Payment, PaymentMethod, PaymentSettings
 
 def home(request):
     """Landing page with featured courses"""
+    # Load only essential courses initially for better performance
     featured_courses = Course.objects.filter(
         is_published=True, 
         is_featured=True
-    ).select_related('category', 'instructor').prefetch_related('reviews')[:6]
+    ).select_related('category', 'instructor').prefetch_related('reviews')[:3]  # Reduced from 6 to 3
     
     latest_courses = Course.objects.filter(
         is_published=True
-    ).select_related('category', 'instructor').prefetch_related('reviews').order_by('-created_at')[:6]
+    ).select_related('category', 'instructor').prefetch_related('reviews').order_by('-created_at')[:3]  # Reduced from 6 to 3
     
-    categories = Category.objects.all()[:8]
+    categories = Category.objects.all()[:6]  # Reduced from 8 to 6
     
     # Get top reviews for testimonials section
     top_reviews = Review.objects.filter(
         is_moderated=True,
         rating__gte=4
-    ).select_related('course', 'student').order_by('-created_at')[:6]
+    ).select_related('course', 'student').order_by('-created_at')[:3]  # Reduced from 6 to 3
     
     # Get active banners for hero section
     active_banners = Banner.objects.filter(
@@ -45,11 +46,13 @@ def home(request):
         'categories': categories,
         'active_banners': active_banners,
         'top_reviews': top_reviews,
+        'total_courses': Course.objects.filter(is_published=True).count(),  # For "View All" button
     }
     return render(request, 'courses/home.html', context)
 
 def course_list(request):
     """List all published courses with filtering and search"""
+    # Base queryset with optimization
     courses = Course.objects.filter(is_published=True).select_related('category', 'instructor').prefetch_related('reviews')
     
     # Search functionality
@@ -94,12 +97,16 @@ def course_list(request):
     else:
         courses = courses.order_by('-created_at')
     
-    # Pagination
-    paginator = Paginator(courses, 12)
+    # Optimized pagination - smaller page size for better performance
+    paginator = Paginator(courses, 8)  # Reduced from 12 to 8 for faster loading
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    categories = Category.objects.all()
+    # Get categories for filter (limited for performance)
+    categories = Category.objects.all()[:10]  # Limited to 10 categories
+    
+    # Get total count for performance metrics
+    total_courses = courses.count()
     
     context = {
         'page_obj': page_obj,
@@ -108,6 +115,9 @@ def course_list(request):
         'current_difficulty': difficulty,
         'current_sort': sort_by,
         'query': query,
+        'total_courses': total_courses,
+        'has_next': page_obj.has_next(),
+        'has_previous': page_obj.has_previous(),
     }
     return render(request, 'courses/course_list.html', context)
 
@@ -648,3 +658,63 @@ def review_analytics(request, slug):
         'user_has_access': user_has_access,
     }
     return render(request, 'courses/review_analytics.html', context)
+
+def lazy_load_courses(request):
+    """AJAX endpoint for lazy loading courses"""
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        page = request.GET.get('page', 1)
+        category_id = request.GET.get('category')
+        difficulty = request.GET.get('difficulty')
+        sort_by = request.GET.get('sort', '-created_at')
+        query = request.GET.get('q', '')
+        
+        # Build queryset
+        courses = Course.objects.filter(is_published=True).select_related('category', 'instructor').prefetch_related('reviews')
+        
+        # Apply filters
+        if category_id:
+            courses = courses.filter(category_id=category_id)
+        if difficulty:
+            courses = courses.filter(difficulty=difficulty)
+        if query:
+            courses = courses.filter(
+                Q(title__icontains=query) |
+                Q(description__icontains=query) |
+                Q(category__name__icontains=query)
+            )
+        
+        # Apply sorting
+        if sort_by == 'price_low':
+            courses = courses.order_by('price')
+        elif sort_by == 'price_high':
+            courses = courses.order_by('-price')
+        elif sort_by == 'rating':
+            courses = courses.order_by('-rating')
+        elif sort_by == 'students':
+            courses = courses.order_by('-students_enrolled')
+        else:
+            courses = courses.order_by('-created_at')
+        
+        # Pagination
+        paginator = Paginator(courses, 8)
+        try:
+            page_obj = paginator.page(page)
+        except:
+            return JsonResponse({'error': 'Invalid page'}, status=400)
+        
+        # Render course cards HTML
+        from django.template.loader import render_to_string
+        html = render_to_string('courses/course_cards_partial.html', {
+            'page_obj': page_obj,
+            'request': request
+        })
+        
+        return JsonResponse({
+            'html': html,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous(),
+            'current_page': page_obj.number,
+            'total_pages': paginator.num_pages,
+        })
+    
+    return JsonResponse({'error': 'Invalid request'}, status=400)
