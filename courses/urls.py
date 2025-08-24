@@ -6,6 +6,7 @@ app_name = 'courses'
 urlpatterns = [
     path('', views.home, name='home'),
     path('courses/', views.course_list, name='course_list'),
+    path('courses/lazy-load/', views.lazy_load_courses, name='lazy_load_courses'),  # New lazy loading endpoint
     path('course/<slug:slug>/', views.course_detail, name='course_detail'),
     path('course/<slug:slug>/enroll/', views.course_enroll, name='course_enroll'),
     path('course/<slug:slug>/learn/', views.course_learn, name='course_learn'),

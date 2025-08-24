@@ -112,6 +112,123 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Lazy loading for courses
+function initCourseLazyLoading() {
+    let currentPage = 1;
+    let isLoading = false;
+    let hasMorePages = true;
+    
+    // Load more courses when user scrolls near bottom
+    function loadMoreCourses() {
+        if (isLoading || !hasMorePages) return;
+        
+        isLoading = true;
+        currentPage++;
+        
+        // Show loading indicator
+        const loadingHtml = `
+            <div class="col-12 text-center py-4" id="loading-indicator">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2 text-muted">Loading more courses...</p>
+            </div>
+        `;
+        
+        const courseContainer = document.querySelector('.course-container');
+        if (courseContainer) {
+            courseContainer.insertAdjacentHTML('beforeend', loadingHtml);
+        }
+        
+        // Get current filters
+        const urlParams = new URLSearchParams(window.location.search);
+        const category = urlParams.get('category') || '';
+        const difficulty = urlParams.get('difficulty') || '';
+        const sort = urlParams.get('sort') || '';
+        const query = urlParams.get('q') || '';
+        
+        // Make AJAX request
+        fetch(`/courses/lazy-load/?page=${currentPage}&category=${category}&difficulty=${difficulty}&sort=${sort}&q=${query}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.html) {
+                // Remove loading indicator
+                const loadingIndicator = document.getElementById('loading-indicator');
+                if (loadingIndicator) {
+                    loadingIndicator.remove();
+                }
+                
+                // Append new courses
+                courseContainer.insertAdjacentHTML('beforeend', data.html);
+                
+                // Update pagination state
+                hasMorePages = data.has_next;
+                
+                // Initialize animations for new content
+                if (typeof AOS !== 'undefined') {
+                    AOS.refresh();
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error loading courses:', error);
+            // Remove loading indicator
+            const loadingIndicator = document.getElementById('loading-indicator');
+            if (loadingIndicator) {
+                loadingIndicator.remove();
+            }
+        })
+        .finally(() => {
+            isLoading = false;
+        });
+    }
+    
+    // Intersection Observer for infinite scroll
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && hasMorePages) {
+                loadMoreCourses();
+            }
+        });
+    }, {
+        rootMargin: '100px' // Load when user is 100px away from bottom
+    });
+    
+    // Observe the last course card or a sentinel element
+    function observeLastElement() {
+        const courseCards = document.querySelectorAll('.course-card');
+        if (courseCards.length > 0) {
+            const lastCard = courseCards[courseCards.length - 1];
+            observer.observe(lastCard);
+        }
+    }
+    
+    // Initialize lazy loading
+    if (document.querySelector('.course-container')) {
+        observeLastElement();
+        
+        // Re-observe after new content is loaded
+        const courseContainer = document.querySelector('.course-container');
+        const mutationObserver = new MutationObserver(() => {
+            observeLastElement();
+        });
+        
+        mutationObserver.observe(courseContainer, {
+            childList: true,
+            subtree: true
+        });
+    }
+}
+
+// Initialize lazy loading when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    initCourseLazyLoading();
+});
+
 // Debounced search for better performance
 function debounce(func, wait) {
     let timeout;
