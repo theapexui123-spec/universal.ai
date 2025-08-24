@@ -20,47 +20,49 @@
                     <h4 class="mb-0"><i class="fas fa-credit-card me-2"></i>Available Payment Methods</h4>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        {% for method in payment_methods %}
-                        <div class="col-md-4 mb-4">
-                            <div class="card h-100 border-0 shadow-sm">
-                                <div class="card-body text-center">
-                                    <div class="mb-3">
-                                        {% if method.name == 'easypaisa' %}
-                                            <i class="fas fa-mobile-alt text-primary" style="font-size: 3rem;"></i>
-                                        {% elif method.name == 'jazzcash' %}
-                                            <i class="fas fa-wallet text-success" style="font-size: 3rem;"></i>
-                                        {% elif method.name == 'bank_transfer' %}
-                                            <i class="fas fa-university text-info" style="font-size: 3rem;"></i>
-                                        {% else %}
-                                            <i class="fas fa-credit-card text-secondary" style="font-size: 3rem;"></i>
+                    {% if payment_methods %}
+                        <div class="row">
+                            {% for method in payment_methods %}
+                            <div class="col-md-4 mb-4">
+                                <div class="card h-100 border-0 shadow-sm">
+                                    <div class="card-body text-center">
+                                        <div class="mb-3">
+                                            {% if method.name == 'easypaisa' %}
+                                                <i class="fas fa-mobile-alt text-primary" style="font-size: 3rem;"></i>
+                                            {% elif method.name == 'jazzcash' %}
+                                                <i class="fas fa-wallet text-success" style="font-size: 3rem;"></i>
+                                            {% elif method.name == 'bank_transfer' %}
+                                                <i class="fas fa-university text-info" style="font-size: 3rem;"></i>
+                                            {% else %}
+                                                <i class="fas fa-credit-card text-secondary" style="font-size: 3rem;"></i>
+                                            {% endif %}
+                                        </div>
+                                        <h5 class="card-title">{{ method.get_name_display }}</h5>
+                                        {% if method.account_number %}
+                                            <p class="card-text">
+                                                <strong>Account:</strong> {{ method.account_number }}
+                                            </p>
                                         {% endif %}
+                                        {% if method.account_title %}
+                                            <p class="card-text">
+                                                <strong>Title:</strong> {{ method.account_title }}
+                                            </p>
+                                        {% endif %}
+                                        <span class="badge {% if method.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                                            {% if method.is_active %}Active{% else %}Inactive{% endif %}
+                                        </span>
                                     </div>
-                                    <h5 class="card-title">{{ method.get_name_display }}</h5>
-                                    {% if method.account_number %}
-                                        <p class="card-text">
-                                            <strong>Account:</strong> {{ method.account_number }}
-                                        </p>
-                                    {% endif %}
-                                    {% if method.account_title %}
-                                        <p class="card-text">
-                                            <strong>Title:</strong> {{ method.account_title }}
-                                        </p>
-                                    {% endif %}
-                                    <span class="badge {% if method.is_active %}bg-success{% else %}bg-secondary{% endif %}">
-                                        {% if method.is_active %}Active{% else %}Inactive{% endif %}
-                                    </span>
                                 </div>
                             </div>
+                            {% endfor %}
                         </div>
-                        {% empty %}
-                        <div class="col-12 text-center">
+                    {% else %}
+                        <div class="text-center py-4">
                             <i class="fas fa-exclamation-triangle text-warning mb-3" style="font-size: 3rem;"></i>
                             <h5 class="text-muted">No payment methods available</h5>
                             <p class="text-muted">Please contact support for payment options.</p>
                         </div>
-                        {% endfor %}
-                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -246,78 +248,7 @@
         </div>
     </div>
 
-    <!-- Payment Account Details -->
-    {% if payment_settings.easypaisa_number or payment_settings.jazzcash_number or payment_settings.bank_account_number %}
-    <div class="row mb-5">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h4 class="mb-0"><i class="fas fa-university me-2"></i>Payment Account Details</h4>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        {% if payment_settings.easypaisa_number %}
-                        <div class="col-md-4 mb-4">
-                            <div class="card h-100 border-primary">
-                                <div class="card-header bg-primary text-white">
-                                    <h5 class="mb-0"><i class="fas fa-mobile-alt me-2"></i>EasyPaisa</h5>
-                                </div>
-                                <div class="card-body">
-                                    <p><strong>Number:</strong> {{ payment_settings.easypaisa_number }}</p>
-                                    {% if payment_settings.easypaisa_title %}
-                                        <p><strong>Title:</strong> {{ payment_settings.easypaisa_title }}</p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
 
-                        {% if payment_settings.jazzcash_number %}
-                        <div class="col-md-4 mb-4">
-                            <div class="card h-100 border-success">
-                                <div class="card-header bg-success text-white">
-                                    <h5 class="mb-0"><i class="fas fa-wallet me-2"></i>JazzCash</h5>
-                                </div>
-                                <div class="card-body">
-                                    <p><strong>Number:</strong> {{ payment_settings.jazzcash_number }}</p>
-                                    {% if payment_settings.jazzcash_title %}
-                                        <p><strong>Title:</strong> {{ payment_settings.jazzcash_title }}</p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
-
-                        {% if payment_settings.bank_account_number %}
-                        <div class="col-md-4 mb-4">
-                            <div class="card h-100 border-info">
-                                <div class="card-header bg-info text-white">
-                                    <h5 class="mb-0"><i class="fas fa-university me-2"></i>Bank Transfer</h5>
-                                </div>
-                                <div class="card-body">
-                                    <p><strong>Account:</strong> {{ payment_settings.bank_account_number }}</p>
-                                    {% if payment_settings.bank_account_title %}
-                                        <p><strong>Title:</strong> {{ payment_settings.bank_account_title }}</p>
-                                    {% endif %}
-                                    {% if payment_settings.bank_name %}
-                                        <p><strong>Bank:</strong> {{ payment_settings.bank_name }}</p>
-                                    {% endif %}
-                                    {% if payment_settings.bank_branch %}
-                                        <p><strong>Branch:</strong> {{ payment_settings.bank_branch }}</p>
-                                    {% endif %}
-                                    {% if payment_settings.bank_iban %}
-                                        <p><strong>IBAN:</strong> {{ payment_settings.bank_iban }}</p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
 
     <!-- Terms and Conditions -->
     {% if payment_settings.terms_conditions or payment_settings.refund_policy %}
