@@ -48,14 +48,14 @@ def profile(request):
 @login_required
 def dashboard(request):
     """User dashboard"""
-    # Get user's enrolled courses
-    enrollments = request.user.enrollments.filter(is_active=True).order_by('-enrolled_at')
+    # Get user's enrolled courses with optimization
+    enrollments = request.user.enrollments.filter(is_active=True).select_related('course', 'course__category', 'course__instructor').order_by('-enrolled_at')
     
-    # Get user's recent payments
-    payments = request.user.payments.all().order_by('-created_at')[:5]
+    # Get user's recent payments with optimization
+    payments = request.user.payments.all().select_related('course', 'payment_method').order_by('-created_at')[:5]
     
-    # Get user's recent reviews
-    reviews = request.user.reviews.all().order_by('-created_at')[:5]
+    # Get user's recent reviews with optimization
+    reviews = request.user.reviews.all().select_related('course').order_by('-created_at')[:5]
     
     context = {
         'enrollments': enrollments,

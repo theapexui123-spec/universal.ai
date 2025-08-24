@@ -13,7 +13,11 @@ from django.db.models import Q
 @login_required
 def payment_page(request, slug):
     """Payment page for course purchase"""
-    course = get_object_or_404(Course, slug=slug, is_published=True)
+    course = get_object_or_404(
+        Course.objects.select_related('category', 'instructor'),
+        slug=slug, 
+        is_published=True
+    )
     
     # Check if already enrolled
     if Enrollment.objects.filter(student=request.user, course=course, is_active=True).exists():
@@ -78,7 +82,11 @@ def payment_page(request, slug):
 @login_required
 def payment_detail(request, payment_id):
     """Payment detail page with screenshot upload"""
-    payment = get_object_or_404(Payment, id=payment_id, student=request.user)
+    payment = get_object_or_404(
+        Payment.objects.select_related('course', 'payment_method'),
+        id=payment_id, 
+        student=request.user
+    )
     
     if request.method == 'POST':
         payment_screenshot = request.FILES.get('payment_screenshot')
@@ -100,7 +108,11 @@ def payment_detail(request, payment_id):
 @login_required
 def payment_status(request, payment_id):
     """Payment status page"""
-    payment = get_object_or_404(Payment, id=payment_id, student=request.user)
+    payment = get_object_or_404(
+        Payment.objects.select_related('course', 'payment_method'),
+        id=payment_id, 
+        student=request.user
+    )
     
     context = {
         'payment': payment,
@@ -110,7 +122,7 @@ def payment_status(request, payment_id):
 @login_required
 def my_payments(request):
     """User's payment history"""
-    payments = Payment.objects.filter(student=request.user).order_by('-created_at')
+    payments = Payment.objects.filter(student=request.user).select_related('course', 'payment_method').order_by('-created_at')
     
     # Pagination
     paginator = Paginator(payments, 10)
@@ -125,7 +137,7 @@ def my_payments(request):
 @staff_member_required
 def admin_payments(request):
     """Admin view for managing payments"""
-    payments = Payment.objects.all().order_by('-created_at')
+    payments = Payment.objects.all().select_related('student', 'course', 'payment_method').order_by('-created_at')
     
     # Filter by status
     status_filter = request.GET.get('status')
@@ -170,7 +182,10 @@ def admin_payments(request):
 @require_POST
 def approve_payment(request, payment_id):
     """Approve a payment"""
-    payment = get_object_or_404(Payment, id=payment_id)
+    payment = get_object_or_404(
+        Payment.objects.select_related('course'),
+        id=payment_id
+    )
     
     if payment.status == 'pending':
         payment.approve_payment(request.user)
@@ -184,7 +199,10 @@ def approve_payment(request, payment_id):
 @require_POST
 def reject_payment(request, payment_id):
     """Reject a payment"""
-    payment = get_object_or_404(Payment, id=payment_id)
+    payment = get_object_or_404(
+        Payment.objects.select_related('course'),
+        id=payment_id
+    )
     notes = request.POST.get('notes', '')
     
     if payment.status == 'pending':
@@ -237,8 +255,10 @@ def toggle_payment_method(request, method_id):
 def payment_instructions(request):
     """Payment instructions page"""
     payment_settings = PaymentSettings.get_settings()
+    payment_methods = PaymentMethod.objects.filter(is_active=True)
     
     context = {
         'payment_settings': payment_settings,
+        'payment_methods': payment_methods,
     }
     return render(request, 'payment_system/payment_instructions.html', context)

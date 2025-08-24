@@ -13,15 +13,22 @@ from payment_system.models import Payment, PaymentMethod, PaymentSettings
 
 def home(request):
     """Landing page with featured courses"""
-    featured_courses = Course.objects.filter(is_published=True, is_featured=True)[:6]
-    latest_courses = Course.objects.filter(is_published=True).order_by('-created_at')[:6]
+    featured_courses = Course.objects.filter(
+        is_published=True, 
+        is_featured=True
+    ).select_related('category', 'instructor').prefetch_related('reviews')[:6]
+    
+    latest_courses = Course.objects.filter(
+        is_published=True
+    ).select_related('category', 'instructor').prefetch_related('reviews').order_by('-created_at')[:6]
+    
     categories = Category.objects.all()[:8]
     
     # Get top reviews for testimonials section
     top_reviews = Review.objects.filter(
         is_moderated=True,
         rating__gte=4
-    ).order_by('-created_at')[:6]
+    ).select_related('course', 'student').order_by('-created_at')[:6]
     
     # Get active banners for hero section
     active_banners = Banner.objects.filter(
@@ -43,7 +50,7 @@ def home(request):
 
 def course_list(request):
     """List all published courses with filtering and search"""
-    courses = Course.objects.filter(is_published=True)
+    courses = Course.objects.filter(is_published=True).select_related('category', 'instructor').prefetch_related('reviews')
     
     # Search functionality
     query = request.GET.get('q')
@@ -106,7 +113,11 @@ def course_list(request):
 
 def course_detail(request, slug):
     """Course detail page"""
-    course = get_object_or_404(Course, slug=slug, is_published=True)
+    course = get_object_or_404(
+        Course.objects.select_related('category', 'instructor').prefetch_related('reviews', 'lessons'),
+        slug=slug, 
+        is_published=True
+    )
     
     # Check user access and enrollment status
     user_has_access = False
@@ -183,7 +194,7 @@ def course_detail(request, slug):
     related_courses = Course.objects.filter(
         category=course.category,
         is_published=True
-    ).exclude(id=course.id)[:4]
+    ).exclude(id=course.id).select_related('category', 'instructor')[:4]
     
     # Get payment methods
     payment_methods = PaymentMethod.objects.filter(is_active=True)
@@ -227,67 +238,50 @@ def course_enroll(request, slug):
     messages.success(request, f'Successfully enrolled in {course.title}!')
     return redirect('course_detail', slug=slug)
 
-@login_required
 def course_learn(request, slug):
-    """Course learning page"""
-    course = get_object_or_404(Course, slug=slug)
-    
-    # Check if user has access to this course
-    if not course.user_has_access(request.user):
-        if course.is_free():
-            messages.error(request, 'You need to be logged in to access this course.')
-        else:
-            messages.error(request, 'You need to purchase this course to access its content.')
-        return redirect('courses:course_detail', slug=slug)
-    
-    # Check if user is enrolled, if not create enrollment
-    enrollment, created = Enrollment.objects.get_or_create(
-        student=request.user,
-        course=course,
-        defaults={'is_active': True}
+    """Course learning interface"""
+    course = get_object_or_404(
+        Course.objects.select_related('category', 'instructor').prefetch_related('lessons'),
+        slug=slug, 
+        is_published=True
     )
     
-    if created:
-        # Update course enrollment count
-        course.students_enrolled += 1
-        course.save()
+    # Check if user has access
+    if not course.user_has_access(request.user):
+        messages.error(request, "You must be enrolled in this course to access the learning materials.")
+        return redirect('course_detail', slug=slug)
     
-    # Get all lessons
-    lessons = course.lessons.all()
+    # Get user's progress
+    enrollment = Enrollment.objects.filter(student=request.user, course=course).first()
     
-    # Get progress for each lesson
-    lesson_progress = {}
-    completed_lessons = 0
-    total_lessons = lessons.count()
+    # Get lessons with optimization
+    lessons = course.lessons.all().order_by('order')
     
-    for lesson in lessons:
-        progress, created = CourseProgress.objects.get_or_create(
+    # Get user's completed lessons using CourseProgress
+    completed_lessons = []
+    if enrollment and request.user.is_authenticated:
+        completed_progress = CourseProgress.objects.filter(
             student=request.user,
-            lesson=lesson,
-            defaults={'completed': False}
-        )
-        lesson_progress[lesson.id] = progress
-        if progress.completed:
-            completed_lessons += 1
-    
-    # Calculate progress percentage
-    progress_percentage = (completed_lessons / total_lessons * 100) if total_lessons > 0 else 0
+            lesson__course=course,
+            completed=True
+        ).select_related('lesson')
+        completed_lessons = [progress.lesson for progress in completed_progress]
     
     context = {
         'course': course,
-        'enrollment': enrollment,
         'lessons': lessons,
-        'lesson_progress': lesson_progress,
+        'enrollment': enrollment,
         'completed_lessons': completed_lessons,
-        'total_lessons': total_lessons,
-        'progress_percentage': round(progress_percentage, 1),
     }
     return render(request, 'courses/course_learn.html', context)
 
 @login_required
 def lesson_detail(request, slug, lesson_id):
     """Individual lesson page"""
-    course = get_object_or_404(Course, slug=slug)
+    course = get_object_or_404(
+        Course.objects.select_related('category', 'instructor').prefetch_related('lessons'),
+        slug=slug
+    )
     lesson = get_object_or_404(Lesson, id=lesson_id, course=course)
     
     # Check if user has access to this lesson
@@ -380,7 +374,12 @@ def mark_lesson_complete(request, lesson_id):
 @login_required
 def my_courses(request):
     """User's enrolled courses"""
-    enrollments = Enrollment.objects.filter(student=request.user, is_active=True).order_by('-enrolled_at')
+    enrollments = Enrollment.objects.filter(
+        student=request.user, 
+        is_active=True
+    ).select_related('course', 'course__category', 'course__instructor').prefetch_related(
+        'course__lessons'
+    ).order_by('-enrolled_at')
     
     # Calculate progress for each enrollment
     for enrollment in enrollments:
@@ -414,59 +413,78 @@ def my_courses(request):
     }
     return render(request, 'courses/my_courses.html', context)
 
-@login_required
 def add_review(request, slug):
-    """Add a review for a course"""
-    course = get_object_or_404(Course, slug=slug, is_published=True)
+    """Add a review to a course"""
+    course = get_object_or_404(
+        Course.objects.select_related('category', 'instructor'),
+        slug=slug, 
+        is_published=True
+    )
     
-    # Check if user is enrolled or has access
+    # Check if user is enrolled
     if not course.user_has_access(request.user):
-        messages.error(request, 'You need to enroll in this course to leave a review.')
-        return redirect('courses:course_detail', slug=slug)
+        messages.error(request, "You must be enrolled in this course to leave a review.")
+        return redirect('course_detail', slug=slug)
     
-    # Check if user has already reviewed
-    existing_review = Review.objects.filter(student=request.user, course=course).first()
+    # Check if user already reviewed this course
+    existing_review = Review.objects.filter(course=course, student=request.user).first()
+    if existing_review:
+        messages.warning(request, "You have already reviewed this course.")
+        return redirect('course_detail', slug=slug)
     
     if request.method == 'POST':
-        form = ReviewForm(request.POST, user=request.user, course=course, instance=existing_review)
-        
+        form = ReviewForm(request.POST)
         if form.is_valid():
             review = form.save(commit=False)
-            review.student = request.user
             review.course = course
-            
-            # Check if this is a verified purchase
-            from payment_system.models import Payment
-            review.is_verified_purchase = Payment.objects.filter(
-                student=request.user,
-                course=course,
-                status='approved'
-            ).exists()
-            
+            review.student = request.user
             review.save()
             
-            if existing_review:
-                messages.success(request, 'Your review has been updated successfully!')
-            else:
-                messages.success(request, 'Thank you for your review!')
+            # Update course rating
+            course.update_average_rating()
             
-            return redirect('courses:course_detail', slug=slug)
-        else:
-            messages.error(request, 'Please correct the errors below.')
+            messages.success(request, "Your review has been added successfully!")
+            return redirect('course_detail', slug=slug)
     else:
-        form = ReviewForm(user=request.user, course=course, instance=existing_review)
+        form = ReviewForm()
     
     context = {
-        'form': form,
         'course': course,
-        'existing_review': existing_review,
+        'form': form,
     }
     return render(request, 'courses/add_review.html', context)
 
-def category_courses(request, category_id):
-    """Courses by category"""
-    category = get_object_or_404(Category, id=category_id)
-    courses = Course.objects.filter(category=category, is_published=True).order_by('-created_at')
+def category_courses(request, category_slug):
+    """Display courses in a specific category"""
+    category = get_object_or_404(Category, slug=category_slug)
+    
+    # Get courses in this category with optimization
+    courses = Course.objects.filter(
+        category=category,
+        is_published=True
+    ).select_related('category', 'instructor').prefetch_related('reviews')
+    
+    # Apply search filter if provided
+    search_query = request.GET.get('search', '')
+    if search_query:
+        courses = courses.filter(
+            Q(title__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(category__name__icontains=search_query)
+        )
+    
+    # Apply sorting
+    sort_by = request.GET.get('sort', 'newest')
+    if sort_by == 'price_low':
+        courses = courses.order_by('price')
+    elif sort_by == 'price_high':
+        courses = courses.order_by('-price')
+    elif sort_by == 'rating':
+        courses = courses.order_by('-average_rating')
+    elif sort_by == 'popularity':
+        courses = courses.order_by('-enrollment_count')
+    else:  # newest
+        courses = courses.order_by('-created_at')
     
     # Pagination
     paginator = Paginator(courses, 12)
@@ -475,7 +493,9 @@ def category_courses(request, category_id):
     
     context = {
         'category': category,
-        'page_obj': page_obj,
+        'courses': page_obj,
+        'search_query': search_query,
+        'sort_by': sort_by,
     }
     return render(request, 'courses/category_courses.html', context)
 
@@ -520,25 +540,34 @@ def edit_review(request, review_id):
 
 @login_required
 def delete_review(request, review_id):
-    """Delete user's own review"""
-    review = get_object_or_404(Review, id=review_id, student=request.user)
-    course_slug = review.course.slug
+    """Delete a review"""
+    review = get_object_or_404(
+        Review.objects.select_related('course', 'student'),
+        id=review_id
+    )
+    
+    # Check if user can delete this review
+    if not (request.user == review.student or request.user.is_staff):
+        messages.error(request, "You don't have permission to delete this review.")
+        return redirect('course_detail', slug=review.course.slug)
     
     if request.method == 'POST':
+        course_slug = review.course.slug
         review.delete()
-        messages.success(request, 'Your review has been deleted successfully!')
-        return redirect('courses:course_detail', slug=course_slug)
+        messages.success(request, "Review deleted successfully.")
+        return redirect('course_detail', slug=course_slug)
     
     context = {
         'review': review,
-        'course': review.course,
     }
     return render(request, 'courses/delete_review.html', context)
 
 @staff_member_required
 def moderate_reviews(request):
     """Admin view to moderate reviews"""
-    reviews = Review.objects.filter(is_moderated=False).order_by('-created_at')
+    reviews = Review.objects.filter(
+        is_moderated=False
+    ).select_related('student', 'course', 'moderated_by').order_by('-created_at')
     
     if request.method == 'POST':
         review_id = request.POST.get('review_id')
@@ -570,7 +599,11 @@ def moderate_reviews(request):
 
 def review_analytics(request, slug):
     """Review analytics for a course"""
-    course = get_object_or_404(Course, slug=slug, is_published=True)
+    course = get_object_or_404(
+        Course.objects.select_related('category', 'instructor').prefetch_related('reviews'),
+        slug=slug, 
+        is_published=True
+    )
     
     # Get rating statistics
     rating_form = CourseRatingForm(course)
