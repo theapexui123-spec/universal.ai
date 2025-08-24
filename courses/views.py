@@ -259,6 +259,7 @@ def course_learn(request, slug):
     
     # Get user's completed lessons using CourseProgress
     completed_lessons = []
+    completed_count = 0
     if enrollment and request.user.is_authenticated:
         completed_progress = CourseProgress.objects.filter(
             student=request.user,
@@ -266,12 +267,20 @@ def course_learn(request, slug):
             completed=True
         ).select_related('lesson')
         completed_lessons = [progress.lesson for progress in completed_progress]
+        completed_count = len(completed_lessons)
+    
+    # Calculate progress percentage
+    total_lessons = lessons.count()
+    progress_percentage = (completed_count / total_lessons * 100) if total_lessons > 0 else 0
     
     context = {
         'course': course,
         'lessons': lessons,
         'enrollment': enrollment,
         'completed_lessons': completed_lessons,
+        'completed_count': completed_count,
+        'total_lessons': total_lessons,
+        'progress_percentage': round(progress_percentage, 1),
     }
     return render(request, 'courses/course_learn.html', context)
 
